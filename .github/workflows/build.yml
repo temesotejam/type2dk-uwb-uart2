@@ -1,0 +1,50 @@
+name: Test and build dual UART firmware
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firmware-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: bash tests/run.sh
+      - run: pip install platformio==6.1.18
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+      - run: pio run -e cores3_dual
+      - run: python scripts/package_firmware.py --sha "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: type2dk-uwb-uart2-test-firmware
+          path: build/distribution/
+          if-no-files-found: error
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: type2dk-uwb-uart2-test-firmware
+          path: release-files
+      - name: Publish immutable test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "test-0.1.0-${GITHUB_RUN_NUMBER}" release-files/* --target "$GITHUB_SHA" --prerelease --title "Dual UART test 0.1.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md

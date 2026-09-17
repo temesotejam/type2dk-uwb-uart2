@@ -1,0 +1,24 @@
+{
+  "sdk": "SR040 v04.03.14",
+  "toolchain": "xpack arm-none-eabi 13.2.1-1.1",
+  "hardware_tested": false,
+  "mode": "UART self-test; UWB disabled",
+  "files": {
+    "2dk_A_selftest_v0.1.0.bin": {
+      "bytes": 87120,
+      "sha256": "00e1a641738762750d662fb7613778ce9ba7d6d631f5ac5c0179c6622510b485",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0
+    },
+    "2dk_B_selftest_v0.1.0.bin": {
+      "bytes": 87120,
+      "sha256": "0813b9ec35521616ce394840dc155fe1d68e3c8a0caf75f4b8471b1b944f5307",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0
+    }
+  }
+}

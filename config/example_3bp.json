@@ -1,0 +1,74 @@
+{
+  "name": "example_3bp_not_validated",
+  "confirmed_against_anchors": false,
+  "radio": {
+    "channel": 5,
+    "sfd": 2,
+    "preamble": 10,
+    "rframe": 1,
+    "slots": 25,
+    "slot_duration": 2400
+  },
+  "tags": {
+    "A": {
+      "node_id": 1,
+      "address": 4353,
+      "sessions": [
+        {
+          "anchor_id": 1,
+          "anchor_address": 8449,
+          "session_id": 2684354817,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        },
+        {
+          "anchor_id": 2,
+          "anchor_address": 8450,
+          "session_id": 2684354818,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        },
+        {
+          "anchor_id": 3,
+          "anchor_address": 8451,
+          "session_id": 2684354819,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        }
+      ]
+    },
+    "B": {
+      "node_id": 2,
+      "address": 4354,
+      "sessions": [
+        {
+          "anchor_id": 1,
+          "anchor_address": 8449,
+          "session_id": 2684355073,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        },
+        {
+          "anchor_id": 2,
+          "anchor_address": 8450,
+          "session_id": 2684355074,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        },
+        {
+          "anchor_id": 3,
+          "anchor_address": 8451,
+          "session_id": 2684355075,
+          "tag_initiator": false,
+          "interval_ms": 1000,
+          "start_offset": 0
+        }
+      ]
+    }
+  }
+}

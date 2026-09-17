@@ -1,0 +1,23 @@
+{
+  "compiled": [
+    "A selftest",
+    "B selftest",
+    "A range (compile-only example profile)",
+    "B range (compile-only example profile)"
+  ],
+  "translation_units_each": 198,
+  "compile_errors": 0,
+  "hardware_tested": false,
+  "range_bins_distributed": false,
+  "source_sha256": {
+    "type2dk/build/apply_sdk_changes.py": "c42f1946b73fbd4a1c2869239622e71309b2b98f6b2afebdf56e1a212113b965",
+    "type2dk/build/build.py": "c7ecdd57b187e6c8f6f84afd07a3b45de42a8c89fd4dc26b8f40bb4e5947dce6",
+    "type2dk/source/event_uart.c": "e2815aff655c145b609236c47cab3e592c465a0572556c2446e63c5477e0d1f9",
+    "type2dk/source/event_uart.h": "e891c335bc72d03a5446b5f191a69bf74d1a610061b8cc7c06256a4895c88c07",
+    "type2dk/source/syscalls_heap.c": "0f1f6416b2ac18b95f8079978f050cd62cb9f14be4324275acbb4ab5af9a0ca2",
+    "type2dk/source/tag_app.c": "d14ba8f9034729ddac40b4a46356f265555a7b95953a73728c611b89c439ffd2",
+    "include/event_protocol.h": "98f156ef2b093b91df3e308b599c409272459ef069efb8dff10b03b2056988f3",
+    "include/event_queue.h": "c9b47bd358429d799a630dca630c759d51ec7cfbadd265487da14f612fd6287b",
+    "config/example_3bp.json": "37b38ec5982a6ce3f63fd1fabeed38575dca120561bc5b662d35730af5f0da94"
+  }
+}
