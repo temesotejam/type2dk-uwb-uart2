@@ -47,4 +47,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "test-0.1.0-${GITHUB_RUN_NUMBER}" release-files/* --target "$GITHUB_SHA" --prerelease --title "Dual UART test 0.1.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md
+          gh release create "test-0.1.0-${GITHUB_RUN_NUMBER}" release-files/*.zip release-files/*.bin release-files/*.json release-files/*.txt --target "$GITHUB_SHA" --prerelease --title "Dual UART test 0.1.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md

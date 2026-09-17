@@ -74,6 +74,7 @@ python type2dk/build/build.py --sdk /path/to/uwbiot-top --gcc-bin /path/to/toolc
 - [プロトコルと時刻の意味](docs/PROTOCOL.md)
 - [試験手順と遅延の限界](docs/VALIDATION.md)
 - [実装の出所](docs/PROVENANCE.md)
+- [SDK・ランタイムのライセンス通知](type2dk/licenses/)
 
 CoreS3 GPIOは [M5Stack公式ピン表](https://docs.m5stack.com/en/core/CoreS3)、UARTは
 [ESP-IDF 4.4 UART](https://docs.espressif.com/projects/esp-idf/en/v4.4.8/esp32s3/api-reference/peripherals/uart.html) を参照。

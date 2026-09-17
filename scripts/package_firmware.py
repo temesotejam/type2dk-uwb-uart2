@@ -33,6 +33,13 @@ subprocess.run([sys.executable, str(tool), '--chip', 'esp32s3', 'merge_bin',
                 '0x10000', str(pio/'firmware.bin')], check=True)
 for name in ['README.md', 'docs/PROTOCOL.md', 'docs/VALIDATION.md']:
     shutil.copyfile(ROOT/name, out/Path(name).name)
+licenses = out/'licenses'
+licenses.mkdir(exist_ok=True)
+for p in (ROOT/'type2dk/licenses').iterdir():
+    if p.suffix == '.b64':
+        (licenses/p.stem).write_bytes(base64.b64decode(p.read_text()))
+    elif p.is_file():
+        shutil.copyfile(p, licenses/p.name)
 info = {'version': '0.1.0', 'commit': a.sha, 'hardware_tested': False,
         'type2dk_mode': 'UART self-test; UWB disabled', 'central': 'CoreS3 PORT A RX2 + RX1',
         'files': {p.name: {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
@@ -41,7 +48,7 @@ info = {'version': '0.1.0', 'commit': a.sha, 'hardware_tested': False,
 (out/'SHA256SUMS.txt').write_text(''.join(f'{v["sha256"]}  {k}\n' for k, v in info['files'].items()))
 zip_path = out/'type2dk-uwb-uart2-0.1.0-test.zip'
 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as z:
-    for p in sorted(out.iterdir()):
+    for p in sorted(out.rglob('*')):
         if p != zip_path and p.is_file():
-            z.write(p, p.name)
+            z.write(p, p.relative_to(out))
 print(json.dumps(info, indent=2))
