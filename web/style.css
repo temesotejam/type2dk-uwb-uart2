@@ -1,0 +1,21 @@
+:root{color-scheme:light;--ink:#102238;--muted:#5b6979;--accent:#087a73;--line:#dce5ed;--esp-tools-button-color:#087a73;--esp-tools-button-text-color:#fff;--esp-tools-border-radius:10px}
+*{box-sizing:border-box}
+body{margin:0;background:#f2f6f9;color:var(--ink);font:16px/1.8 system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:54px 24px 32px}
+header{margin-bottom:30px}.eyebrow{color:var(--accent);font-weight:750;font-size:13px;letter-spacing:.12em}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.35;margin:12px 0 16px;letter-spacing:-.03em}
+h2{font-size:21px;line-height:1.5;margin:8px 0 18px}.lead{color:var(--muted);font-size:18px;margin:0}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:26px;margin-bottom:22px}
+.install{border-top:4px solid var(--accent);padding:30px}.badge{display:inline-block;background:#e2f4ef;color:#075e57;border-radius:6px;padding:3px 10px;font-size:13px;font-weight:700;margin-bottom:8px}
+ol,ul{padding-left:1.5em;margin:0 0 24px}li{margin:8px 0}
+button{font:inherit;font-weight:700;background:var(--accent);color:white;padding:15px 26px;border:0;border-radius:10px;cursor:pointer;min-height:54px}
+button:hover{background:#05655f}button:disabled{background:#b0bfc4;cursor:wait}
+a{color:#086e80;text-underline-offset:3px}a:hover{color:#034854}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #f3b846;outline-offset:4px}
+.meta{font-size:13px;color:var(--muted);margin:12px 0 0}.notice{border-left:3px solid #d79b26;background:#fff8e9;border-radius:0 6px 6px 0;padding:12px 15px;font-size:14px;margin:18px 0}
+.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:22px}.grid .card{margin-bottom:22px}
+p{margin:0 0 16px}.download{display:inline-block;font-weight:650;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:11px 4px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px}
+.dot{display:inline-block;width:11px;height:11px;border:1px solid #9aa7b2;border-radius:50%;margin-right:8px}.yellow{background:#f4cd35}.white{background:#fff}.black{background:#30353b}
+summary{font-weight:650;cursor:pointer}details ul{margin:20px 0 0}footer{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;padding:4px}
+@media(max-width:650px){main{padding:30px 16px 24px}.grid{grid-template-columns:1fr;gap:0}.card,.install{padding:21px}button{width:100%}.lead{font-size:16px}h2{font-size:19px}}

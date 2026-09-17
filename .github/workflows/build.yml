@@ -26,11 +26,33 @@ jobs:
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
       - run: pio run -e cores3_dual
       - run: python scripts/package_firmware.py --sha "$GITHUB_SHA"
+      - run: python scripts/build_site.py
       - uses: actions/upload-artifact@v4
         with:
           name: type2dk-uwb-uart2-test-firmware
           path: build/distribution/
           if-no-files-found: error
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: build/site/
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Publish CoreS3 installer
+        id: deployment
+        uses: actions/deploy-pages@v4
   release:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build

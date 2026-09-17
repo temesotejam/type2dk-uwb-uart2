@@ -29,11 +29,13 @@ SWDIOを転用するのでSWDデバッグとの同時使用はしません。
 
 ## 最初の確認
 
+**[CoreS3のブラウザ書き込みページ](https://temesotejam.github.io/type2dk-uwb-uart2/)**
+
 1. [Releases](https://github.com/temesotejam/type2dk-uwb-uart2/releases) の試験セットを取得。
 2. 2DK-Aに `2dk_A_selftest_v0.1.0.bin`、Bに `2dk_B_selftest_v0.1.0.bin` を書き込みます。
    既存の [DK6 Windows GUI](https://temesotejam.github.io/type2dk-uwb-uart/tools/dk6-gui/type2dk-programmer-gui-v1.0.0.zip) の「任意のBIN」を使用できます。
-3. CoreS3には `cores3-dual-merged.bin` をアドレス `0x0` へ書き込みます。
-   Chrome/Edgeで [Espressifのブラウザ書き込みツール](https://espressif.github.io/esptool-js/) を使えます。
+3. PCのChrome/Edgeで上の書き込みページを開き、CoreS3をUSB接続して「CoreS3に書き込む」を押します。
+   BINの選択や書き込みアドレスの入力は不要です。
 4. 電源を入れ直し、A/B両方が `UART TEST`、受信数がそれぞれ増えることを確認します。
 5. CoreS3のUSBログを取得します。旧2DKプログラムとはプロトコル非互換です。
 
