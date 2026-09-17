@@ -60,5 +60,26 @@ UCI通知自体が来ない場合はRANGEを捏造しません。2秒周期のHE
 - `wrong_node` が増える場合はA/B配線または書き込んだBINの取り違えです。
 - 3秒間新しい実測がない距離は画面から消します。HEALTHが来ても距離の鮮度は更新しません。
 - CoreS3の画面は各タグの最新の1件を表示。全anchorのイベントはUSBに出力します。
-- USBを閉じてもUART取得は継続。ログのキュー満杯やUSB未接続による行落ちは `log_drop` に記録します。
+- USBを閉じてもUART取得は継続。ログの破棄は `log_drop` に記録します。
+  0.1.1以降は `log_queue_drop`（アプリ側キュー満杯）、`log_write_drop`（USBドライバへの
+  全行投入が25ms以内にできない）、`log_format_drop`（行のサイズ超過等）の合計です。
+  接続を閉じてもUSB内部に既に入った行は再接続後に届く場合があります。観測時刻は行内の時刻を使います。
 - `TEST` の raw_cm はテストパターン。距離として使えるフラグは付けません。
+
+## USBログの完全性（CoreS3 0.1.1以降）
+
+全ての `UWB_EVENT` / `DUAL_STAT` に `log_seq` と `log_crc` を追加し、CRLFで区切ります。
+`log_seq` はCoreS3内で両ポート・両種類の行に共通の32bit連番です。破棄前に進め、
+再起動でリセットします。2DKの `seq` とは別物です。
+`log_crc` は `,log_crc=` の直前まで（`log_seq` を含む）のASCIIバイト列に対する
+CRC16-CCITT-FALSE（poly=0x1021、init=0xffff、xorout=0）4桁16進数です。
+改行と `,log_crc=xxxx` 自身は計算に含めません。
+
+USBはESP-IDF 4.4.7のUSB Serial/JTAGドライバが単独で所有します。
+Arduino HWCDCは起動せず、USB送信専用タスクが1行ずつドライバに渡します。
+ドライバ内のFIFOへの部分書き込みは未送信部分を保持して続行します。
+`usb_init=ESP_OK` はこのUSBドライバの初期化結果で、`init` は各UARTの初期化結果です。
+ドライバへの投入成功だけではPC側の保存完了までは保証しません。保存ファイルのCRC・連番も照合します。
+
+Tera Termの「ファイル→ログ」でBinaryを有効、TimestampとInclude screen bufferを無効にして保存し、
+`python scripts/check_log.py teraterm.log` で確認できます。0.1.0にはログCRCがなく、この検査は適用できません。

@@ -40,13 +40,13 @@ for p in (ROOT/'type2dk/licenses').iterdir():
         (licenses/p.stem).write_bytes(base64.b64decode(p.read_text()))
     elif p.is_file():
         shutil.copyfile(p, licenses/p.name)
-info = {'version': '0.1.0', 'commit': a.sha, 'hardware_tested': False,
+info = {'version': '0.1.1', 'commit': a.sha, 'hardware_tested': False,
         'type2dk_mode': 'UART self-test; UWB disabled', 'central': 'CoreS3 PORT A RX2 + RX1',
         'files': {p.name: {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
                   for p in out.glob('*.bin')}}
 (out/'build-info.json').write_text(json.dumps(info, indent=2)+'\n')
 (out/'SHA256SUMS.txt').write_text(''.join(f'{v["sha256"]}  {k}\n' for k, v in info['files'].items()))
-zip_path = out/'type2dk-uwb-uart2-0.1.0-test.zip'
+zip_path = out/'type2dk-uwb-uart2-0.1.1-test.zip'
 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as z:
     for p in sorted(out.rglob('*')):
         if p != zip_path and p.is_file():

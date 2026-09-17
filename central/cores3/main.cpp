@@ -1,11 +1,13 @@
 #include <M5Unified.h>
 #include <driver/uart.h>
 #include <driver/gpio.h>
+#include <driver/usb_serial_jtag.h>
 #include <esp_intr_alloc.h>
 #include <esp_timer.h>
 #include <hal/uart_ll.h>
 #include <soc/uart_periph.h>
 #include "event_protocol.h"
+#include "log_record.h"
 
 namespace {
 constexpr unsigned ringSize=1024;
@@ -24,21 +26,32 @@ struct Port {
 };
 Port ports[2];
 M5Canvas canvas(&M5.Display);
-struct LogLine {char text[640];};
+struct LogLine {char text[960];};
 QueueHandle_t logQueue=nullptr;
 portMUX_TYPE logMux=portMUX_INITIALIZER_UNLOCKED;
 uint32_t logDropped=0;
+uint32_t logQueueDropped=0,logWriteDropped=0,logFormatDropped=0,logSequence=0;
+esp_err_t usbInit=ESP_FAIL;
 uint32_t lastDraw=0,lastStat=0;
 
-void countLogDrop(){portENTER_CRITICAL(&logMux);logDropped++;portEXIT_CRITICAL(&logMux);}
+void countLogDrop(uint32_t &reason){portENTER_CRITICAL(&logMux);logDropped++;reason++;portEXIT_CRITICAL(&logMux);}
 uint32_t getLogDrops(){portENTER_CRITICAL(&logMux);uint32_t n=logDropped;portEXIT_CRITICAL(&logMux);return n;}
-void enqueue(const LogLine &line){if(!logQueue||xQueueSend(logQueue,&line,0)!=pdTRUE)countLogDrop();}
+void enqueue(LogLine &line){
+    if(!log_record_finish(line.text,sizeof(line.text),++logSequence)){
+        countLogDrop(logFormatDropped);return;
+    }
+    if(!logQueue||xQueueSend(logQueue,&line,0)!=pdTRUE)countLogDrop(logQueueDropped);
+}
 void logger(void *){
     LogLine line;
     for(;;)if(xQueueReceive(logQueue,&line,portMAX_DELAY)==pdTRUE){
-        if(!Serial){countLogDrop();continue;}
         size_t n=strlen(line.text);
-        if(Serial.write((const uint8_t*)line.text,n)!=n)countLogDrop();
+        // IDF 4.4.7 queues the whole record or returns 0 on timeout. Its ISR
+        // retains any bytes that did not fit in the hardware FIFO. No Arduino
+        // HWCDC calls (including if(Serial)/flush) may share this peripheral.
+        // A closed/unplugged host can stall only this task, for at most 25 ms.
+        if(usb_serial_jtag_write_bytes(line.text,n,pdMS_TO_TICKS(25))!=(int)n)
+            countLogDrop(logWriteDropped);
     }
 }
 
@@ -146,16 +159,21 @@ void statistics(){
         bytes=p.bytes;ring=p.ringDrops;fifo=p.fifoErrors;framing=p.frameErrors;
         parity=p.parityErrors;brk=p.breaks;batch=p.maxBatch;
         portEXIT_CRITICAL(&p.mux);
+        uint32_t logTotal,logQueueLoss,logWriteLoss,logFormatLoss;
+        portENTER_CRITICAL(&logMux);
+        logTotal=logDropped;logQueueLoss=logQueueDropped;logWriteLoss=logWriteDropped;logFormatLoss=logFormatDropped;
+        portEXIT_CRITICAL(&logMux);
         LogLine line={};
         snprintf(line.text,sizeof(line.text),
-          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,init=%s\n",
+          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,log_queue_drop=%lu,log_write_drop=%lu,log_format_drop=%lu,usb_init=%s,init=%s\n",
           FW_VERSION,p.node==1?'A':'B',(unsigned long long)esp_timer_get_time(),state(p,(uint64_t)esp_timer_get_time()),
           (unsigned long)bytes,(unsigned long)p.tracker.accepted,(unsigned long)p.parser.crc_or_format_errors,
           (unsigned long)p.tracker.missing,(unsigned long)p.tracker.duplicates,(unsigned long)p.tracker.backwards,
           (unsigned long)p.tracker.restarts,(unsigned long)p.tracker.wrong_node,(unsigned long)p.rangeCount,
           (unsigned long)p.failedCount,(unsigned long)p.testCount,(unsigned long)ring,(unsigned long)fifo,
           (unsigned long)framing,(unsigned long)parity,(unsigned long)brk,(unsigned long)batch,
-          (unsigned long long)p.maxSpan,(unsigned long)getLogDrops(),esp_err_to_name(p.init));
+          (unsigned long long)p.maxSpan,(unsigned long)logTotal,(unsigned long)logQueueLoss,
+          (unsigned long)logWriteLoss,(unsigned long)logFormatLoss,esp_err_to_name(usbInit),esp_err_to_name(p.init));
         enqueue(line);
     }
 }
@@ -180,17 +198,22 @@ void draw(){
               (unsigned long)p.tracker.wrong_node);
     }
     canvas.setTextColor(0xffc66d);canvas.setCursor(10,220);
-    canvas.printf("Timestamp: UART ISR / USB drop %lu",(unsigned long)getLogDrops());canvas.pushSprite(0,0);
+    if(usbInit!=ESP_OK)canvas.printf("USB init: %s",esp_err_to_name(usbInit));
+    else canvas.printf("Timestamp: UART ISR / USB drop %lu",(unsigned long)getLogDrops());
+    canvas.pushSprite(0,0);
 }
 }
 void setup(){
-    auto cfg=M5.config();cfg.serial_baudrate=115200;cfg.internal_imu=false;cfg.internal_rtc=false;
+    // Leave Arduino HWCDC uninitialized: the IDF driver exclusively owns USB.
+    auto cfg=M5.config();cfg.serial_baudrate=0;cfg.internal_imu=false;cfg.internal_rtc=false;
     cfg.internal_mic=false;cfg.internal_spk=false;cfg.external_imu=false;cfg.external_rtc=false;
     cfg.external_display_value=0;cfg.output_power=false;cfg.fallback_board=m5::board_t::board_M5StackCoreS3;
     M5.begin(cfg);M5.Display.setRotation(1);M5.Display.setBrightness(160);
     canvas.setColorDepth(16);
     if(!canvas.createSprite(320,240)){M5.Display.println("Display allocation failed");while(true)delay(1000);}
-    logQueue=xQueueCreate(48,sizeof(LogLine));
+    usb_serial_jtag_driver_config_t usbCfg={};usbCfg.tx_buffer_size=4096;usbCfg.rx_buffer_size=256;
+    usbInit=usb_serial_jtag_driver_install(&usbCfg);
+    if(usbInit==ESP_OK)logQueue=xQueueCreate(48,sizeof(LogLine));
     if(logQueue && xTaskCreatePinnedToCore(logger,"UsbLogger",4096,nullptr,1,nullptr,0)!=pdPASS){
         vQueueDelete(logQueue);logQueue=nullptr;
     }

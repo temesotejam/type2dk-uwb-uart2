@@ -5,6 +5,9 @@ out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 gcc -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Iinclude tests/test_protocol.c -o "$out/protocol"
 ASAN_OPTIONS=detect_leaks=0 "$out/protocol"
+gcc -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Iinclude tests/test_log.c -o "$out/log"
+ASAN_OPTIONS=detect_leaks=0 "$out/log"
+python tests/test_log_check.py
 python tests/test_profile.py
 for node in A B; do
   python scripts/generate_profile.py config/example_3bp.json --node "$node" --out "$out/tag_profile.h"
