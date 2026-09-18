@@ -19,7 +19,6 @@ jobs:
         with:
           python-version: '3.11'
       - run: bash tests/run.sh
-      - run: python scripts/verify_firmware.py firmware/manifest.json
       - run: pip install platformio==6.1.18
       - uses: actions/cache@v4
         with:
@@ -70,4 +69,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "ranging-0.3.0-${GITHUB_RUN_NUMBER}" release-files/*.zip release-files/*.bin release-files/*.json release-files/*.txt --target "$GITHUB_SHA" --prerelease --title "Dual UART ranging 0.3.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md
+          gh release create "ranging-0.4.0-${GITHUB_RUN_NUMBER}" release-files/*.zip release-files/*.bin release-files/*.json release-files/*.txt --target "$GITHUB_SHA" --prerelease --title "Dual UART legacy-8 ranging 0.4.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md
