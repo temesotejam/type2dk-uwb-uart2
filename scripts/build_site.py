@@ -17,6 +17,8 @@ binary = (a.distribution/name).read_bytes()
 digest = hashlib.sha256(binary).hexdigest()
 if len(binary) != info['files'][name]['bytes'] or digest != info['files'][name]['sha256']:
     raise ValueError('CoreS3 firmware checksum mismatch')
+if a.out.exists():
+    shutil.rmtree(a.out)
 a.out.mkdir(parents=True, exist_ok=True)
 shutil.copytree(ROOT/'web', a.out, dirs_exist_ok=True)
 shutil.copytree(a.distribution, a.out/'firmware', dirs_exist_ok=True)

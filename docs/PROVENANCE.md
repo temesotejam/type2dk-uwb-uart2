@@ -17,3 +17,19 @@ Changes dated 2026-09-18: private function names, preserve/prime initial TX,
 idle ZLP, queue race recheck, overlap-safe partial-write stash, allocation checks,
 and a FIFO-written byte counter. Arduino HWCDC and the SDK USB driver are not installed.
 The corresponding license is `licenses/Apache-2.0.txt`, also bundled in firmware downloads.
+
+
+Type2BP support (0.2.0) targets the user's Rev.4.1 EVK and supplied
+`Type2BP_SDK_UWBIOT_SR150_v04.08.01_MCUx.zip`.
+`type2bp/build/prepare_sdk.py` applies the supplied `2bp_prebuild_v04.08.01.patch`
+to an external SDK and disables accelerometer initialization and SE051W use.
+The new anchor app uses the SR150 API's session handles, derives peer sessions
+from the shared JSON, and applies the vendor patch's per-board OTP TX/XTAL
+calibration values to runtime registers. It does not write OTP.
+SDK sources, firmware source arrays and vendor patches are not copied here.
+`type2bp/licenses/` contains the SR150 release's EULA and Software Content Register;
+common runtime/BSD/FreeRTOS notices remain bundled alongside them.
+
+The SR150 stated ROM image area is 0x60000 bytes (no OTA use) to fit its embedded
+SR150 firmware; the actual flash image and ROM trailer are independently checked.
+All firmware is experimental until validated on the user's hardware.

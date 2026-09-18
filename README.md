@@ -7,14 +7,13 @@ CoreS3 の PORT A を **2本とも RX** として使い、共通の µs 時計�
 
 ## 現在の到達点
 
-- 2DK: 測距通知ごとの48バイト送信、非同期キュー、結果取得・送信開始時刻、UCI連番、失敗・nLos raw。
-- CoreS3: A/BそれぞれのハードウェアUART、受信割り込みでバイト時刻取得、CRC、欠落・再起動・接続先違い検出、画面とUSBログ。
-- 0.1.0でA/B同時UART受信を実機確認済み。CoreS3 **0.1.2-dual** はUSB送信開始・再開の修正版です。
-  0.1.1でログが出ない報告を受け、古いドライバのTX起動処理を修正しました。
-  ログ連番/CRC・破棄理由別カウンタに加えて、画面下部にUSB TXバイト数を表示します。実機で再確認します。
-- 最初の配布BINは **UART試験用**。画面の `UART TEST` は合成データで、UWB測距成功を意味しません。
-- 固定2BPの現行プログラムとセッション設定は未取得です。例の設定は未確認として扱い、通常ビルドでは `CONFIG REQUIRED` を表示してUWBを開始しません。
-- A/Bと複数2BPの同時測距、無線の時間配分、測距遅延の実測、位置姿勢推定は未検証です。
+- **0.2.0: 固定側Type2BP BP1/BP2/BP3と、2DK-A/Bの実測距用BINを配布します。**
+- 対象基板は **Type2DK Rev.4.1 / Type2BP EVK Rev.4.1**。CoreS3の画面には各A/BのBP1〜BP3を表示します。
+- 配布する全5台のUWB設定を同じJSONから生成。加速度センサ・BLE・2DK間通信は使用しません。
+- A/Bの同時UART受信は実機確認済み。**2BPとの実測距、複数BPの同時動作は実機未確認です。**
+- USBログは0.1.2で操作なしの欠落が残り、0.2.0で128行保持・再試行を追加しました。実機で再評価します。
+
+**[実測距版の書き込み・配線・確認手順](docs/RANGING_SETUP.md)**
 
 ## 配線
 
@@ -30,35 +29,19 @@ PIO_12は使用しません。以前の外部I²Cプルアップは外し、Core
 PORT AのI²Cは解放します。画面・タッチ用の内部I²Cは維持します。
 SWDIOを転用するのでSWDデバッグとの同時使用はしません。
 
-## 最初の確認
+## 書き込み
 
 **[CoreS3のブラウザ書き込みページ](https://temesotejam.github.io/type2dk-uwb-uart2/)**
 
-1. [Releases](https://github.com/temesotejam/type2dk-uwb-uart2/releases) の試験セットを取得。
-2. 2DK-Aに `2dk_A_selftest_v0.1.0.bin`、Bに `2dk_B_selftest_v0.1.0.bin` を書き込みます。
-   既存の [DK6 Windows GUI](https://temesotejam.github.io/type2dk-uwb-uart/tools/dk6-gui/type2dk-programmer-gui-v1.0.0.zip) の「任意のBIN」を使用できます。
-3. PCのChrome/Edgeで上の書き込みページを開き、CoreS3をUSB接続して「CoreS3に書き込む」を押します。
-   BINの選択や書き込みアドレスの入力は不要です。
-4. 電源を入れ直し、A/B両方が `UART TEST`、受信数がそれぞれ増えることを確認します。
-5. CoreS3のUSBログを取得します。旧2DKプログラムとはプロトコル非互換です。
+同じページから `type2dk-uwb-uart2-0.2.0-ranging.zip` を取得します。
+2DK-A/Bには `2dk_A_range_v0.2.0.bin` / `2dk_B_range_v0.2.0.bin`、
+固定側には `2bp_BP1_anchor_v0.2.0.bin`（追加時はBP2/BP3）を書き込みます。
+まずBP1を1台だけ動かし、CoreS3でA/Bそれぞれの距離を確認します。
+UWB基板はDK6 Windows GUI「任意のBIN」を使用できます。
 
-0.1.0/0.1.1からの更新はCoreS3のみです。2DKのA/B試験BINと配線は同じです。
-Tera Termで「ファイル→ログ」の **BinaryをON、TimestampとInclude screen bufferをOFF** にし、
-30秒以上記録したファイルを保存します。ログの検査は `python scripts/check_log.py teraterm.log` で実行できます。
-
-試験用BINはUWBを起動せず、各2DKから約5件/秒の `type=TEST` を送ります。
-**実距離は出ません。** `range_mm=-1`、画面の距離も `--` です。
-2BPはこの配線試験には必要ありません。
-
-## 実測へ進む際に必要な設定
-
-`config/example_3bp.json` は設計例で、現在の2BP設定ではありません。
-相手側のソース／設定を確認してMACアドレス、両端共通セッションID、役割、
-チャンネル、SFD、プリアンブル、SP1/SP3、STS関連設定、周期を一致させます。
-確認後 `confirmed_against_anchors: true` として通常版をビルドします。
-現在の設定器は基本DS-TWR/unicast設定を対象とし、特殊STS鍵・セキュリティ設定は相手に応じた拡張が必要です。
-各2BPにはA用とB用の測距設定が必要です。独立した局の開始オフセットだけで
-共通スケジュールが保証されるわけではありません。
+旧 `selftest_v0.1.0.bin` は配線切り分け用として同梱します。
+これは **UART TEST** の合成データで、UWBを起動しません。距離確認には `range_v0.2.0.bin` を使います。
+CoreS3のUSBログは115200 bps / 8N1 / フロー制御なし、UWB基板自身のUSBログは3,000,000 bpsです。
 
 ## ビルド・テスト
 
@@ -77,7 +60,18 @@ python type2dk/build/build.py --sdk /path/to/uwbiot-top --gcc-bin /path/to/toolc
 python type2dk/build/build.py --sdk /path/to/uwbiot-top --gcc-bin /path/to/toolchain/bin --node B --profile config/example_3bp.json --self-test --out build/B
 ```
 
-実測版は確認済みプロフィールを指定し `--self-test` を外します。
+実測版は `--profile config/dual_3bp.json` を指定し `--self-test` を外します。
+2DK SDKには提供元の対応する村田パッチを先に適用してください。
+
+固定側は別の **Type2BP SR150 v04.08.01 SDKと、同梱の村田パッチ**を使用します。
+
+```sh
+python type2bp/build/prepare_sdk.py /path/to/SR150/uwbiot-top --patch /path/to/2bp_prebuild_v04.08.01.patch
+python type2bp/build/build.py --sdk /path/to/SR150/uwbiot-top --gcc-bin /path/to/toolchain/bin --anchor 1 --profile config/dual_3bp.json --out build/BP1
+```
+
+`--anchor 2/3`でBP2/BP3をビルドします。SR150新SDKのsession handleとSR040のsession IDは別APIとして処理します。
+SDKとパッチ本体はこのリポジトリに含めません。
 ファームウェアにはSDKの起動処理を含め加速度センサ初期化を入れません。
 
 - [プロトコルと時刻の意味](docs/PROTOCOL.md)

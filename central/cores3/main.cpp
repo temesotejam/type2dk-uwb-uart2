@@ -4,10 +4,12 @@
 #include "usb_log_driver.h"
 #include <esp_intr_alloc.h>
 #include <esp_timer.h>
+#include <esp_heap_caps.h>
 #include <hal/uart_ll.h>
 #include <soc/uart_periph.h>
 #include "event_protocol.h"
 #include "log_record.h"
+#include "range_view.h"
 
 namespace {
 constexpr unsigned ringSize=1024;
@@ -20,17 +22,21 @@ struct Port {
     uint32_t epoch=0,bytes=0,ringDrops=0,fifoErrors=0,frameErrors=0,parityErrors=0,breaks=0,maxBatch=0;
     intr_handle_t interrupt=nullptr;esp_err_t init=ESP_FAIL;
     event_parser_t parser={};event_tracker_t tracker={};uint32_t readerEpoch=0;
-    event_t latest={},measurement={};bool haveMeasurement=false;
-    uint64_t lastRx=0,measurementRx=0,maxSpan=0;
+    event_t latest={};range_cell_t ranges[3]={};
+    uint64_t lastRx=0,maxSpan=0;
     uint32_t rangeCount=0,failedCount=0,testCount=0;
 };
 Port ports[2];
 M5Canvas canvas(&M5.Display);
 struct LogLine {char text[960];};
 QueueHandle_t logQueue=nullptr;
+constexpr unsigned logCapacity=128;
+StaticQueue_t logQueueControl;
+uint8_t *logStorage=nullptr;
 portMUX_TYPE logMux=portMUX_INITIALIZER_UNLOCKED;
 uint32_t logDropped=0;
 uint32_t logQueueDropped=0,logWriteDropped=0,logFormatDropped=0,logSequence=0;
+uint32_t usbWaits=0;
 esp_err_t usbInit=ESP_FAIL;
 uint32_t lastDraw=0,lastStat=0;
 
@@ -49,9 +55,15 @@ void logger(void *){
         // Our patched IDF driver queues the whole record or returns 0 on timeout.
         // Its ISR preserves TX wakeups and partial FIFO writes. No Arduino
         // HWCDC calls (including if(Serial)/flush) may share this peripheral.
-        // A closed/unplugged host can stall only this task, for at most 25 ms.
-        if(cores3_usb_write_bytes(line.text,n,pdMS_TO_TICKS(25))!=(int)n)
-            countLogDrop(logWriteDropped);
+        // Keep this complete record and retry. UART/UI keep running; PSRAM
+        // holds 128 queued records. A prolonged host stall drops NEW records
+        // at enqueue and increments log_queue_drop, without corrupting lines.
+        for(;;){
+            int written=cores3_usb_write_bytes(line.text,n,pdMS_TO_TICKS(100));
+            if(written==(int)n)break;
+            if(written!=0){countLogDrop(logWriteDropped);break;}
+            portENTER_CRITICAL(&logMux);usbWaits++;portEXIT_CRITICAL(&logMux);
+        }
     }
 }
 
@@ -113,12 +125,11 @@ esp_err_t beginPort(Port &p){
 void accept(Port &p,const event_t &e,uint64_t first,uint64_t last){
     bool reboot=p.tracker.seen && p.tracker.boot!=e.boot;
     if(!event_track(&p.tracker,&e,p.node))return;
-    if(reboot)p.haveMeasurement=false;
+    range_view_update(p.ranges,&e,last,reboot);
     p.latest=e;p.lastRx=last;if(last-first>p.maxSpan)p.maxSpan=last-first;
     if(e.type==EVENT_RANGE){
         p.rangeCount++;if(!(e.flags&EVENT_DISTANCE_VALID))p.failedCount++;
-        p.measurement=e;p.measurementRx=last;p.haveMeasurement=true;
-    }else if(e.type==EVENT_TEST){p.testCount++;p.haveMeasurement=false;}
+    }else if(e.type==EVENT_TEST){p.testCount++;}
     LogLine line={};
     // cm -> mm is only a unit conversion. Sensor quantization remains 10 mm.
     int mm=(e.flags&EVENT_DISTANCE_VALID)?(int)e.range_cm*10:-1;
@@ -159,13 +170,14 @@ void statistics(){
         bytes=p.bytes;ring=p.ringDrops;fifo=p.fifoErrors;framing=p.frameErrors;
         parity=p.parityErrors;brk=p.breaks;batch=p.maxBatch;
         portEXIT_CRITICAL(&p.mux);
-        uint32_t logTotal,logQueueLoss,logWriteLoss,logFormatLoss;
+        uint32_t logTotal,logQueueLoss,logWriteLoss,logFormatLoss,waits;
         portENTER_CRITICAL(&logMux);
         logTotal=logDropped;logQueueLoss=logQueueDropped;logWriteLoss=logWriteDropped;logFormatLoss=logFormatDropped;
+        waits=usbWaits;
         portEXIT_CRITICAL(&logMux);
         LogLine line={};
         snprintf(line.text,sizeof(line.text),
-          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,log_queue_drop=%lu,log_write_drop=%lu,log_format_drop=%lu,usb_tx_bytes=%lu,usb_init=%s,init=%s\n",
+          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,log_queue_drop=%lu,log_write_drop=%lu,log_format_drop=%lu,usb_tx_bytes=%lu,usb_waits=%lu,log_pending=%u,usb_init=%s,init=%s\n",
           FW_VERSION,p.node==1?'A':'B',(unsigned long long)esp_timer_get_time(),state(p,(uint64_t)esp_timer_get_time()),
           (unsigned long)bytes,(unsigned long)p.tracker.accepted,(unsigned long)p.parser.crc_or_format_errors,
           (unsigned long)p.tracker.missing,(unsigned long)p.tracker.duplicates,(unsigned long)p.tracker.backwards,
@@ -174,6 +186,7 @@ void statistics(){
           (unsigned long)framing,(unsigned long)parity,(unsigned long)brk,(unsigned long)batch,
           (unsigned long long)p.maxSpan,(unsigned long)logTotal,(unsigned long)logQueueLoss,
           (unsigned long)logWriteLoss,(unsigned long)logFormatLoss,(unsigned long)cores3_usb_tx_bytes(),
+          (unsigned long)waits,logQueue?(unsigned)uxQueueMessagesWaiting(logQueue):0,
           esp_err_to_name(usbInit),esp_err_to_name(p.init));
         enqueue(line);
     }
@@ -188,15 +201,14 @@ void draw(){
         canvas.setTextColor(0x45d6d0);canvas.setTextSize(2);canvas.setCursor(10,y);
         canvas.printf("%c  %s",i?'B':'A',state(p,now));
         canvas.setTextSize(1);canvas.setTextColor(0xe7f1ff);canvas.setCursor(10,y+23);
-        const auto &m=p.measurement;
-        bool fresh=p.haveMeasurement && now-p.measurementRx<3000000u &&
-                   (m.flags&(EVENT_DISTANCE_VALID|EVENT_PROFILE_CONFIRMED))==3 && m.fault==0;
-        if(fresh)canvas.printf("Anchor %u: %u mm   nLos(raw) %u",m.anchor,(unsigned)m.range_cm*10,m.nlos);
-        else canvas.print("Distance: -- (test / failed / stale)");
-        canvas.setCursor(10,y+39);canvas.printf("RX %lu  MISS %lu  BAD %lu",(unsigned long)p.tracker.accepted,
+        for(unsigned j=0;j<3;j++){
+            const auto &c=p.ranges[j];canvas.setCursor(10,y+21+12*j);
+            if(range_view_fresh(&c,now))canvas.printf("BP%u: %5u mm  nLos %u",j+1,(unsigned)c.event.range_cm*10,c.event.nlos);
+            else if(c.seen&&now-c.rx_us<3000000u)canvas.printf("BP%u: --  status %02x  state %u",j+1,c.event.status,c.event.session_state);
+            else canvas.printf("BP%u: --",j+1);
+        }
+        canvas.setCursor(10,y+58);canvas.printf("RX %lu  MISS %lu  BAD %lu",(unsigned long)p.tracker.accepted,
               (unsigned long)p.tracker.missing,(unsigned long)p.parser.crc_or_format_errors);
-        canvas.setCursor(10,y+53);canvas.printf("TX drop %lu  wrong port %lu",(unsigned long)p.latest.dropped,
-              (unsigned long)p.tracker.wrong_node);
     }
     canvas.setTextColor(0xffc66d);canvas.setCursor(10,220);
     if(usbInit!=ESP_OK)canvas.printf("USB init: %s",esp_err_to_name(usbInit));
@@ -214,9 +226,13 @@ void setup(){
     if(!canvas.createSprite(320,240)){M5.Display.println("Display allocation failed");while(true)delay(1000);}
     usb_serial_jtag_driver_config_t usbCfg={};usbCfg.tx_buffer_size=4096;usbCfg.rx_buffer_size=256;
     usbInit=cores3_usb_driver_install(&usbCfg);
-    if(usbInit==ESP_OK)logQueue=xQueueCreate(48,sizeof(LogLine));
+    if(usbInit==ESP_OK){
+        logStorage=(uint8_t*)heap_caps_malloc(logCapacity*sizeof(LogLine),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+        if(logStorage)logQueue=xQueueCreateStatic(logCapacity,sizeof(LogLine),logStorage,&logQueueControl);
+        if(!logQueue)usbInit=ESP_ERR_NO_MEM;
+    }
     if(logQueue && xTaskCreatePinnedToCore(logger,"UsbLogger",4096,nullptr,1,nullptr,0)!=pdPASS){
-        vQueueDelete(logQueue);logQueue=nullptr;
+        vQueueDelete(logQueue);logQueue=nullptr;usbInit=ESP_ERR_NO_MEM;
     }
     ports[0].number=UART_NUM_1;ports[0].hw=&UART1;ports[0].pin=2;ports[0].node=1;
     ports[1].number=UART_NUM_2;ports[1].hw=&UART2;ports[1].pin=1;ports[1].node=2;

@@ -1,13 +1,13 @@
-Type2DK-A/Bの両方をPIO_13 TX、CoreS3 PORT Aの黄色GPIO2をA RX・白色GPIO1をB RXとする初期試験版です。
+# 0.2.0 実測距試験版
 
-**同梱の2DK BINは合成UART試験です。UWBは起動しません。**
-CoreS3の画面は `UART TEST` と表示します。固定2BPとの実測は相手のプロフィール確認後です。
+Type2DK Rev.4.1 ×2とType2BP EVK Rev.4.1 ×1〜3用。
+固定側BP1/BP2/BP3、2DK-A/Bの測距BINを同梱します。CoreS3も0.2.0-dualへ更新します。
+まず固定側BP1だけでA/Bの距離を確認してください。手順はRANGING_SETUP.mdです。
 
-`type2dk-uwb-uart2-0.1.2-test.zip` にA/BのBIN・CoreS3結合BIN・配線手順・ログ仕様が入っています。
-CoreS3結合BINの書き込み先は `0x0` です。
+2DKの両方はPIO13 TX、CoreS3 PORT A黄=A/白=B。加速度センサ取得なし。
+CoreS3は各A/BのBP1〜BP3の距離とnLos rawを表示し、USBログには受信µs時刻を保存します。
+USBの一時停止では128行を保持して再試行します。
 
-CoreS3 0.1.2-dualは、0.1.1でUSBログが出なくなる問題への修正です。
-ドライバの初回送信とidle後の再開を修正し、FIFO部分書き込みの保持、ログ連番・CRC・破棄理由を維持します。
-画面下部にUSB TXバイト数を追加しました。起動・再開・部分書き込み・キュー競合のホスト試験済みです。
-0.1.0の実機ログでA/B同時UART受信は確認済みですが、今回のUSB修正は実機での再確認が必要です。
-更新対象はCoreS3のみです。2DK A/BのBINは従来の0.1.0から変更していません。
+ARMビルド、ホスト試験、起動ヘッダ/CRC検証済み。**実機のUWB測距・複数BP同時動作は未確認**です。
+以前のselftest BINも切り分け用に含みますが、距離取得にはrange BINを使ってください。
+SDK本体・DK6Programmerは含めていません。ライセンス通知はlicensesを参照してください。

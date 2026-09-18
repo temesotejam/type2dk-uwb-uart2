@@ -19,7 +19,7 @@
   </header>
 
   <section class="install card" aria-labelledby="install-heading">
-    <div class="badge">UART 2系統受信版</div>
+    <div class="badge">UWB距離・UART 2系統受信版</div>
     <h2 id="install-heading">CoreS3をPCに接続してください</h2>
     <ol>
       <li>PCの<strong>Chrome または Edge</strong>でこのページを開きます。</li>
@@ -39,10 +39,11 @@
   <div class="grid">
     <section class="card" aria-labelledby="check-heading">
       <h2 id="check-heading">書き込み後の確認</h2>
-      <p>画面上部に <strong>0.1.2-dual</strong> と表示されます。USBログの送信開始・再開を修正した版です。A/B用の2DK試験版を接続すると、両方に <strong>UART TEST</strong> が表示され、受信数が増えます。画面下部の <strong>USB TX</strong> でUSBへ書き出したバイト数を確認できます。</p>
-      <p class="notice"><strong>現在はUART通信の試験版です。</strong><br>2DKの試験用BINは合成データを送ります。UWBによる実距離の測定は行いません。</p>
-      <a class="download" href="./firmware/type2dk-uwb-uart2-0.1.2-test.zip">2DK A/Bの試験BIN・手順をダウンロード</a>
-      <p class="meta">2DKへの書き込みは、これまでのDK6 Windows GUIを使います。</p>
+      <p>画面上部に <strong>0.2.0-dual</strong> と表示されます。A/Bそれぞれの <strong>BP1〜BP3までの距離</strong> とnLosの生値を表示します。</p>
+      <p>下のセットから<strong>2DK-A/Bと固定側2BP</strong>も更新してください。まずBP1を1台だけ動かして距離を確認します。対象は両方とも<strong>基板Rev.4.1</strong>です。</p>
+      <p class="notice"><strong>実測距用の試験版です。</strong><br>ビルドと通信処理のテスト済みですが、2BPとの実機測距はまだ未確認です。</p>
+      <a class="download" href="./firmware/type2dk-uwb-uart2-0.2.0-ranging.zip">2DK A/B・固定側BP1〜BP3の測距BINをダウンロード</a>
+      <p class="meta">2DK・2BPはこれまでのDK6 Windows GUI「任意のBIN」で書き込みます。ZIP内のRANGING_SETUP.mdに機器別のファイル名を記載しています。</p>
     </section>
     <section class="card" aria-labelledby="wiring-heading">
       <h2 id="wiring-heading">CoreS3 PORT Aの配線</h2>

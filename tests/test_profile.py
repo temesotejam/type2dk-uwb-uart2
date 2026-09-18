@@ -32,6 +32,26 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 m.validate(p)
 
+    def test_matching_anchor_endpoints(self):
+        import re
+        p = json.loads((ROOT/'config/dual_3bp.json').read_text())
+        pairs = set()
+        for anchor in (1, 2, 3):
+            h = m.generate_anchor(p, anchor)
+            rows = re.findall(r'\{(\d+)u,(\d+)u,(\d+)u,(\d+)u\}', h)
+            self.assertEqual(len(rows), 2)
+            for sid, period, peer, node in map(lambda r: map(int, r), rows):
+                name = 'A' if node == 1 else 'B'
+                tag = p['tags'][name]
+                s = next(s for s in tag['sessions'] if s['anchor_id'] == anchor)
+                self.assertEqual((sid, period, peer), (s['session_id'], s['interval_ms'], tag['address']))
+                self.assertFalse(s['tag_initiator'])
+                self.assertIn(f'#define ANCHOR_ADDRESS {s["anchor_address"]}u', h)
+                pairs.add((node, anchor))
+        self.assertEqual(len(pairs), 6)
+        with self.assertRaises(ValueError):
+            m.generate_anchor(self.p, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

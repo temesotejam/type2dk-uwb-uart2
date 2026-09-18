@@ -22,6 +22,12 @@ def validate(p):
         raise ValueError('SR040 profile supports channel 5 or 9')
     if radio['rframe'] not in (1, 3):
         raise ValueError('select SP1 or SP3 explicitly')
+    integer(radio.get('vendor_id', 0x0708), 0, 65535, 'vendor_id')
+    iv = radio.get('static_sts_iv', [1, 2, 3, 4, 5, 6])
+    if len(iv) != 6:
+        raise ValueError('static_sts_iv requires 6 bytes')
+    for byte in iv:
+        integer(byte, 0, 255, 'static_sts_iv byte')
     session_ids, tag_addresses = set(), set()
     anchor_addresses = {}
     for index, name in enumerate(('A', 'B'), 1):
@@ -65,6 +71,8 @@ def generate(p, node):
     for key, val in radio.items():
         if key in ('channel', 'sfd', 'preamble', 'rframe', 'slots', 'slot_duration'):
             lines.append(f'#define TAG_RADIO_{key.upper()} {val}u')
+    lines += [f'#define TAG_RADIO_VENDOR_ID {radio.get("vendor_id", 0x0708)}u',
+              'static const uint8_t tag_sts_iv[6] = {' + ','.join(map(str, radio.get('static_sts_iv', [1,2,3,4,5,6]))) + '};']
     lines += ['typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset;} tag_session_t;',
               'static const tag_session_t tag_sessions[] = {']
     for s in t['sessions']:
@@ -74,11 +82,35 @@ def generate(p, node):
     return '\n'.join(lines)
 
 
+def generate_anchor(p, anchor):
+    validate(p)
+    # Invert the same sessions, never maintain a second address/session table.
+    sessions = [(name, t, s) for name, t in p['tags'].items()
+                for s in t['sessions'] if s['anchor_id'] == anchor]
+    if len(sessions) != 2 or {n for n, _, _ in sessions} != {'A', 'B'}:
+        raise ValueError('each anchor needs exactly one A and one B session')
+    if any(s['tag_initiator'] for _, _, s in sessions):
+        raise ValueError('this anchor application requires controller/initiator anchors')
+    if not p['confirmed_against_anchors']:
+        raise ValueError('anchor builds require a matched profile')
+    header = generate(p, 'A').split('typedef struct')[0]
+    header = header.replace('TAG_PROFILE_H', 'ANCHOR_PROFILE_H')
+    header += f'#define ANCHOR_ID {anchor}u\n#define ANCHOR_ADDRESS {sessions[0][2]["anchor_address"]}u\n'
+    header += 'typedef struct {uint32_t id,interval;uint16_t peer;uint8_t node;} anchor_session_t;\n'
+    header += 'static const anchor_session_t anchor_sessions[2] = {\n'
+    for _, t, s in sessions:
+        header += '    {%du,%du,%du,%du},\n' % (s['session_id'], s['interval_ms'], t['address'], t['node_id'])
+    return header + '};\n#endif\n'
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('profile', type=Path)
-    ap.add_argument('--node', choices=['A', 'B'], required=True)
+    group = ap.add_mutually_exclusive_group(required=True)
+    group.add_argument('--node', choices=['A', 'B'])
+    group.add_argument('--anchor', type=int)
     ap.add_argument('--out', type=Path, required=True)
     a = ap.parse_args()
     a.out.parent.mkdir(parents=True, exist_ok=True)
-    a.out.write_text(generate(json.loads(a.profile.read_text()), a.node))
+    p = json.loads(a.profile.read_text())
+    a.out.write_text(generate_anchor(p, a.anchor) if a.anchor is not None else generate(p, a.node))

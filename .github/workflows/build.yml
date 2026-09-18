@@ -1,4 +1,4 @@
-name: Test and build dual UART firmware
+name: Test and build dual UART ranging firmware
 on:
   push:
     branches: [main]
@@ -19,6 +19,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: bash tests/run.sh
+      - run: python scripts/verify_firmware.py firmware/manifest.json
       - run: pip install platformio==6.1.18
       - uses: actions/cache@v4
         with:
@@ -69,4 +70,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "test-0.1.2-${GITHUB_RUN_NUMBER}" release-files/*.zip release-files/*.bin release-files/*.json release-files/*.txt --target "$GITHUB_SHA" --prerelease --title "Dual UART test 0.1.2 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md
+          gh release create "ranging-0.2.0-${GITHUB_RUN_NUMBER}" release-files/*.zip release-files/*.bin release-files/*.json release-files/*.txt --target "$GITHUB_SHA" --prerelease --title "Dual UART ranging 0.2.0 (build ${GITHUB_RUN_NUMBER})" --notes-file docs/RELEASE.md

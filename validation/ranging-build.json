@@ -1,25 +1,7 @@
 {
-  "sdk": "SR040 v04.03.14 + SR150 v04.08.01 with Murata Type2BP patch",
-  "toolchain": "xpack arm-none-eabi 13.2.1-1.1",
+  "version": "0.2.0",
   "hardware_tested": false,
-  "mode": "Real ranging; matching A/B tags and BP1/BP2/BP3 anchors",
-  "files": {
-    "2dk_A_selftest_v0.1.0.bin": {
-      "bytes": 87120,
-      "sha256": "00e1a641738762750d662fb7613778ce9ba7d6d631f5ac5c0179c6622510b485",
-      "vector_checksum": "PASS",
-      "header_crc": "PASS",
-      "boot_block": "PASS",
-      "load_address": 0
-    },
-    "2dk_B_selftest_v0.1.0.bin": {
-      "bytes": 87120,
-      "sha256": "0813b9ec35521616ce394840dc155fe1d68e3c8a0caf75f4b8471b1b944f5307",
-      "vector_checksum": "PASS",
-      "header_crc": "PASS",
-      "boot_block": "PASS",
-      "load_address": 0
-    },
+  "binaries": {
     "2dk_A_range_v0.2.0.bin": {
       "bytes": 277432,
       "sha256": "4a746cbd6d41658a3c3f4ec6af413fda92d8875e125721f3c14aef8f78a19f73",
@@ -71,6 +53,23 @@
       "accelerometer_linked": false
     }
   },
-  "boards": "Type2DK Rev.4.1 and Type2BP EVK Rev.4.1",
-  "profile": "config/dual_3bp.json"
+  "profile_sha256": "aabd11ebb128400dd7259f66802f9811c1c3f0d4002ff365a79e690833381ec2",
+  "source_sha256": {
+    "type2dk/source/event_uart.c": "e2815aff655c145b609236c47cab3e592c465a0572556c2446e63c5477e0d1f9",
+    "type2dk/source/tag_app.c": "b344904f77833ce2a8683c5debba66987be01d024a1b5bbe368972bfaa1981c4",
+    "type2dk/source/event_uart.h": "e891c335bc72d03a5446b5f191a69bf74d1a610061b8cc7c06256a4895c88c07",
+    "type2dk/source/syscalls_heap.c": "0f1f6416b2ac18b95f8079978f050cd62cb9f14be4324275acbb4ab5af9a0ca2",
+    "type2bp/source/syscalls_heap.c": "0f1f6416b2ac18b95f8079978f050cd62cb9f14be4324275acbb4ab5af9a0ca2",
+    "type2bp/source/anchor_app.c": "7b0836082ae1280ca02cc686643210f91e38e59041a8ee0602fe3681d0dd274c",
+    "type2dk/build/build.py": "62e51da8d488adf31446838944f49826f0b41988ab9d71e2fd56fec85b7c8d12",
+    "type2dk/build/apply_sdk_changes.py": "c42f1946b73fbd4a1c2869239622e71309b2b98f6b2afebdf56e1a212113b965",
+    "type2bp/build/build.py": "d1bfde264c609624334071b6073c42d287581e784db85ecfbf1999a07976dd9b",
+    "type2bp/build/prepare_sdk.py": "bf69c14c1e7fc73909a627167275ee409bfd65101c9d035d81d8c853e4bdc322",
+    "scripts/generate_profile.py": "ba04a6f01cb33cd856cc5e19a41af0d08b8417d399ceed5878ac2684a43f0b49"
+  },
+  "vendor_patch_sha256": "4a8d53de07219fe1b5835e009343d66ee3add78ee1406e2c19c209e87453117a",
+  "boards": [
+    "Type2DK Rev.4.1",
+    "Type2BP EVK Rev.4.1"
+  ]
 }

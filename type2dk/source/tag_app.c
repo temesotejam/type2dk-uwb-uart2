@@ -82,6 +82,18 @@ static bool configure(const tag_session_t *s)
         UWB_SET_APP_PARAM_VALUE(AOA_RESULT_REQ,0),
         UWB_SET_APP_PARAM_VALUE(RNG_DATA_NTF,1),
         UWB_SET_APP_PARAM_VALUE(RANGING_START_OFFSET,s->offset),
+        UWB_SET_APP_PARAM_VALUE(STS_CONFIG,0),
+        UWB_SET_APP_PARAM_VALUE(VENDOR_ID,TAG_RADIO_VENDOR_ID),
+        UWB_SET_APP_PARAM_ARRAY(STATIC_STS_IV,tag_sts_iv,sizeof(tag_sts_iv)),
+        UWB_SET_APP_PARAM_VALUE(NUMBER_OF_STS_SEGMENTS,1),
+        UWB_SET_APP_PARAM_VALUE(STS_LENGTH,1),
+        UWB_SET_APP_PARAM_VALUE(RANGING_ROUND_CONTROL,3),
+        UWB_SET_APP_PARAM_VALUE(RESULT_REPORT_CONFIG,1),
+        UWB_SET_APP_PARAM_VALUE(MAC_FCS_TYPE,0),
+        UWB_SET_APP_PARAM_VALUE(PSDU_DATA_RATE,0),
+        UWB_SET_APP_PARAM_VALUE(PREAMBLE_DURATION,1),
+        UWB_SET_APP_PARAM_VALUE(RANGING_TIME_STRUCT,1),
+        UWB_SET_APP_PARAM_VALUE(HOPPING_MODE,0),
     };
     if(!step_ok("SESSION",UwbApi_SessionInit(s->id,UWBD_RANGING_SESSION),s->id))return false;
     if(!step_ok("CONFIG",UwbApi_SetAppConfigMultipleParams(s->id,COUNT(cfg),cfg),s->id))return false;
@@ -187,7 +199,7 @@ static OSAL_TASK_RETURN_TYPE tag_task(void *unused){
     (void)unused;heartbeat_ms=now_ms();
     memset((void*)states,255,sizeof(states));memset((void*)reasons,255,sizeof(reasons));
     if(RNG_Init()!=gRngSuccess_d || RNG_HwGetRandomNo(&boot_id)!=gRngSuccess_d)goto fail;
-    PRINTF("BOOT,TYPE2DK_EVENT_V0.1.0,node=%u,boot=%08lx,profile_confirmed=%u,selftest=%u,clock_quantum_ms=%u\r\n",
+    PRINTF("BOOT,TYPE2DK_EVENT_V0.2.0,node=%u,boot=%08lx,profile_confirmed=%u,selftest=%u,clock_quantum_ms=%u\r\n",
         TAG_NODE,(unsigned long)boot_id,TAG_PROFILE_CONFIRMED,TAG_SELF_TEST,(unsigned)portTICK_PERIOD_MS);
     if(!event_uart_start(boot_id))goto fail;
     if(TAG_SELF_TEST){
