@@ -52,8 +52,8 @@ def validate(p):
                 raise ValueError('A/B require distinct session IDs')
             session_ids.add(sid)
             group = targets(s)
-            if not 1 <= len(group) <= 12:
-                raise ValueError('SR040 supports at most 12 responder entries')
+            if not 1 <= len(group) <= 5:
+                raise ValueError('SR040 v04.03.14 supports at most 5 responders in multicast mode')
             if len(group) > 1 and not s['tag_initiator']:
                 raise ValueError('multicast tag must be the controller/initiator')
             if s.get('channel', radio['channel']) not in (5, 9):
@@ -68,7 +68,7 @@ def validate(p):
                     raise ValueError('anchor ID maps to different addresses for A/B')
                 anchor_addresses[anchor] = peer
             integer(s['interval_ms'], 200, 60000, 'interval_ms')
-            integer(s['start_offset'], 0, 255, 'start_offset')
+            integer(s['start_offset'], 0, 200, 'start_offset')
             if type(s['tag_initiator']) is not bool:
                 raise ValueError('tag_initiator must be boolean')
     if tag_addresses.intersection(anchor_addresses.values()):
@@ -89,13 +89,13 @@ def generate(p, node):
             lines.append(f'#define TAG_RADIO_{key.upper()} {val}u')
     lines += [f'#define TAG_RADIO_VENDOR_ID {radio.get("vendor_id", 0x0708)}u',
               'static const uint8_t tag_sts_iv[6] = {' + ','.join(map(str, radio.get('static_sts_iv', [1,2,3,4,5,6]))) + '};']
-    lines += ['typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset,count,channel; uint16_t anchors[12],peers[12];} tag_session_t;',
+    lines += ['typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset,count,channel,multi,slot; uint16_t anchors[5],peers[5];} tag_session_t;',
               'static const tag_session_t tag_sessions[] = {']
     for s in t['sessions']:
         group = targets(s)
         row = [s['session_id'], s['interval_ms'], group[0]['anchor_id'],
                group[0]['anchor_address'], int(s['tag_initiator']), s['start_offset'],
-               len(group), s.get('channel', radio['channel'])]
+               len(group), s.get('channel', radio['channel']), int(len(group) > 1), 0]
         lines.append('    {' + ','.join(f'{v}u' for v in row) + ',{' +
                      ','.join(str(g['anchor_id'])+'u' for g in group) + '},{' +
                      ','.join(str(g['anchor_address'])+'u' for g in group) + '}},')
@@ -126,14 +126,56 @@ def generate_anchor(p, anchor):
     return header + '};\n#endif\n'
 
 
+def generate_sr040_anchor(p, anchor):
+    """Generate a Type2DK/SR040 fixed responder from the same A/B profile."""
+    validate(p)
+    sessions = [(name, t, s, slot, g) for name, t in p['tags'].items()
+                for s in t['sessions'] for slot, g in enumerate(targets(s), 1)
+                if g['anchor_id'] == anchor]
+    if len(sessions) != 2 or {n for n, *_ in sessions} != {'A', 'B'}:
+        raise ValueError('SR040 fixed anchor needs exactly one A and one B session')
+    if not p['confirmed_against_anchors']:
+        raise ValueError('SR040 fixed-anchor builds require a matched profile')
+    addresses = {entry[4]['anchor_address'] for entry in sessions}
+    if len(addresses) != 1:
+        raise ValueError('fixed anchor address must match in A and B sessions')
+    address = addresses.pop()
+    radio = p['radio']
+    lines = ['/* Generated SR040 fixed responder; source of truth is config JSON. */',
+             '#ifndef TAG_PROFILE_H', '#define TAG_PROFILE_H', '#include <stdint.h>',
+             '#define TAG_NODE 8', f'#define TAG_ADDRESS {address}u',
+             f'#define TAG_PROFILE_CONFIRMED {int(p["confirmed_against_anchors"])}']
+    for key, val in radio.items():
+        if key in ('channel', 'sfd', 'preamble', 'rframe', 'slots', 'slot_duration'):
+            lines.append(f'#define TAG_RADIO_{key.upper()} {val}u')
+    lines += [f'#define TAG_RADIO_VENDOR_ID {radio.get("vendor_id", 0x0708)}u',
+              'static const uint8_t tag_sts_iv[6] = {' + ','.join(map(str, radio.get('static_sts_iv', [1,2,3,4,5,6]))) + '};',
+              'typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset,count,channel,multi,slot; uint16_t anchors[5],peers[5];} tag_session_t;',
+              'static const tag_session_t tag_sessions[] = {']
+    for _, t, s, slot, _ in sessions:
+        row = [s['session_id'], s['interval_ms'], anchor, t['address'], 0,
+               s['start_offset'], 1, s.get('channel', radio['channel']), 1, slot]
+        lines.append('    {' + ','.join(f'{v}u' for v in row) +
+                     ',{' + str(anchor) + 'u},{' + str(t['address']) + 'u}},')
+    lines += ['};', '#define TAG_SESSION_COUNT (sizeof(tag_sessions)/sizeof(tag_sessions[0]))', '#endif', '']
+    return '\n'.join(lines)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('profile', type=Path)
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument('--node', choices=['A', 'B'])
     group.add_argument('--anchor', type=lambda x:int(x,0))
+    group.add_argument('--sr040-anchor', type=lambda x:int(x,0))
     ap.add_argument('--out', type=Path, required=True)
     a = ap.parse_args()
     a.out.parent.mkdir(parents=True, exist_ok=True)
     p = json.loads(a.profile.read_text())
-    a.out.write_text(generate_anchor(p, a.anchor) if a.anchor is not None else generate(p, a.node))
+    if a.anchor is not None:
+        text = generate_anchor(p, a.anchor)
+    elif a.sr040_anchor is not None:
+        text = generate_sr040_anchor(p, a.sr040_anchor)
+    else:
+        text = generate(p, a.node)
+    a.out.write_text(text)
