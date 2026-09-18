@@ -11,6 +11,11 @@ def integer(v, lo, hi, name):
     return v
 
 
+def targets(s):
+    return s.get('anchors', [{'anchor_id': s.get('anchor_id'),
+                             'anchor_address': s.get('anchor_address')}])
+
+
 def validate(p):
     if type(p['confirmed_against_anchors']) is not bool:
         raise ValueError('confirmed_against_anchors must be boolean')
@@ -43,14 +48,25 @@ def validate(p):
         peers, anchors = set(), set()
         for s in t['sessions']:
             sid = integer(s['session_id'], 1, 0xffffffff, 'session_id')
-            anchor = integer(s['anchor_id'], 1, 65534, 'anchor_id')
-            peer = integer(s['anchor_address'], 1, 65534, 'anchor_address')
-            if sid in session_ids or peer in peers or anchor in anchors:
-                raise ValueError('duplicate session/anchor in profile')
-            session_ids.add(sid); peers.add(peer); anchors.add(anchor)
-            if anchor in anchor_addresses and anchor_addresses[anchor] != peer:
-                raise ValueError('anchor ID maps to different addresses for A/B')
-            anchor_addresses[anchor] = peer
+            if sid in session_ids:
+                raise ValueError('A/B require distinct session IDs')
+            session_ids.add(sid)
+            group = targets(s)
+            if not 1 <= len(group) <= 12:
+                raise ValueError('SR040 supports at most 12 responder entries')
+            if len(group) > 1 and not s['tag_initiator']:
+                raise ValueError('multicast tag must be the controller/initiator')
+            if s.get('channel', radio['channel']) not in (5, 9):
+                raise ValueError('channel must be 5 or 9')
+            for g in group:
+                anchor = integer(g['anchor_id'], 1, 65534, 'anchor_id')
+                peer = integer(g['anchor_address'], 1, 65534, 'anchor_address')
+                if peer in peers or anchor in anchors:
+                    raise ValueError('duplicate anchor in profile')
+                peers.add(peer); anchors.add(anchor)
+                if anchor in anchor_addresses and anchor_addresses[anchor] != peer:
+                    raise ValueError('anchor ID maps to different addresses for A/B')
+                anchor_addresses[anchor] = peer
             integer(s['interval_ms'], 200, 60000, 'interval_ms')
             integer(s['start_offset'], 0, 255, 'start_offset')
             if type(s['tag_initiator']) is not bool:
@@ -73,11 +89,16 @@ def generate(p, node):
             lines.append(f'#define TAG_RADIO_{key.upper()} {val}u')
     lines += [f'#define TAG_RADIO_VENDOR_ID {radio.get("vendor_id", 0x0708)}u',
               'static const uint8_t tag_sts_iv[6] = {' + ','.join(map(str, radio.get('static_sts_iv', [1,2,3,4,5,6]))) + '};']
-    lines += ['typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset;} tag_session_t;',
+    lines += ['typedef struct {uint32_t id,interval; uint16_t anchor,peer; uint8_t init,offset,count,channel; uint16_t anchors[12],peers[12];} tag_session_t;',
               'static const tag_session_t tag_sessions[] = {']
     for s in t['sessions']:
-        lines.append('    {%du,%du,%du,%du,%du,%du},' % (s['session_id'], s['interval_ms'],
-                     s['anchor_id'], s['anchor_address'], s['tag_initiator'], s['start_offset']))
+        group = targets(s)
+        row = [s['session_id'], s['interval_ms'], group[0]['anchor_id'],
+               group[0]['anchor_address'], int(s['tag_initiator']), s['start_offset'],
+               len(group), s.get('channel', radio['channel'])]
+        lines.append('    {' + ','.join(f'{v}u' for v in row) + ',{' +
+                     ','.join(str(g['anchor_id'])+'u' for g in group) + '},{' +
+                     ','.join(str(g['anchor_address'])+'u' for g in group) + '}},')
     lines += ['};', '#define TAG_SESSION_COUNT (sizeof(tag_sessions)/sizeof(tag_sessions[0]))', '#endif', '']
     return '\n'.join(lines)
 
@@ -85,21 +106,23 @@ def generate(p, node):
 def generate_anchor(p, anchor):
     validate(p)
     # Invert the same sessions, never maintain a second address/session table.
-    sessions = [(name, t, s) for name, t in p['tags'].items()
-                for s in t['sessions'] if s['anchor_id'] == anchor]
-    if len(sessions) != 2 or {n for n, _, _ in sessions} != {'A', 'B'}:
+    sessions = [(name, t, s, slot, g) for name, t in p['tags'].items()
+                for s in t['sessions'] for slot, g in enumerate(targets(s), 1)
+                if g['anchor_id'] == anchor]
+    if len(sessions) != 2 or {n for n, *_ in sessions} != {'A', 'B'}:
         raise ValueError('each anchor needs exactly one A and one B session')
-    if any(s['tag_initiator'] for _, _, s in sessions):
-        raise ValueError('this anchor application requires controller/initiator anchors')
     if not p['confirmed_against_anchors']:
         raise ValueError('anchor builds require a matched profile')
     header = generate(p, 'A').split('typedef struct')[0]
     header = header.replace('TAG_PROFILE_H', 'ANCHOR_PROFILE_H')
-    header += f'#define ANCHOR_ID {anchor}u\n#define ANCHOR_ADDRESS {sessions[0][2]["anchor_address"]}u\n'
-    header += 'typedef struct {uint32_t id,interval;uint16_t peer;uint8_t node;} anchor_session_t;\n'
+    header += f'#define ANCHOR_ID {anchor}u\n#define ANCHOR_ADDRESS {sessions[0][4]["anchor_address"]}u\n'
+    header += 'typedef struct {uint32_t id,interval;uint16_t peer;uint8_t node,init,multi,channel,slot;} anchor_session_t;\n'
     header += 'static const anchor_session_t anchor_sessions[2] = {\n'
-    for _, t, s in sessions:
-        header += '    {%du,%du,%du,%du},\n' % (s['session_id'], s['interval_ms'], t['address'], t['node_id'])
+    for _, t, s, slot, _ in sessions:
+        header += '    {%du,%du,%du,%du,%du,%du,%du,%du},\n' % (
+            s['session_id'], s['interval_ms'], t['address'], t['node_id'],
+            not s['tag_initiator'], len(targets(s)) > 1,
+            s.get('channel', p['radio']['channel']), slot)
     return header + '};\n#endif\n'
 
 
@@ -108,7 +131,7 @@ if __name__ == '__main__':
     ap.add_argument('profile', type=Path)
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument('--node', choices=['A', 'B'])
-    group.add_argument('--anchor', type=int)
+    group.add_argument('--anchor', type=lambda x:int(x,0))
     ap.add_argument('--out', type=Path, required=True)
     a = ap.parse_args()
     a.out.parent.mkdir(parents=True, exist_ok=True)

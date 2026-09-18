@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #define FALSE 0
-#define MAX_NUM_RESPONDERS 5
+#define MAX_NUM_RESPONDERS 12
 #define MEASUREMENT_TYPE_TWOWAY 1
 #define UWBAPI_STATUS_OK 0
 #define UWBAPI_STATUS_FAILED 2
@@ -21,11 +21,11 @@
 typedef struct {unsigned unused;} AppContext_t;
 typedef unsigned tUWBAPI_STATUS;
 typedef unsigned eAppConfig;
-enum {RANGING_ROUND_USAGE,RFRAME_CONFIG,SLOTS_PER_RR,SLOT_DURATION,RANGING_INTERVAL,MAX_RR_RETRY,CHANNEL_NUMBER,SFD_ID,PREAMBLE_CODE_INDEX,PRF_MODE,TX_ADAPTIVE_PAYLOAD_POWER,AOA_RESULT_REQ,RNG_DATA_NTF,DATA_TRANSFER_MODE,RANGING_START_OFFSET,STS_CONFIG,VENDOR_ID,STATIC_STS_IV,NUMBER_OF_STS_SEGMENTS,STS_LENGTH,RANGING_ROUND_CONTROL,RESULT_REPORT_CONFIG,MAC_FCS_TYPE,PSDU_DATA_RATE,PREAMBLE_DURATION,RANGING_TIME_STRUCT,HOPPING_MODE,NO_OF_CONTROLEES,DST_MAC_ADDRESS,RANGING_DURATION,SESSION_INFO_NTF};
+enum {RANGING_ROUND_USAGE,RFRAME_CONFIG,SLOTS_PER_RR,SLOT_DURATION,RANGING_INTERVAL,MAX_RR_RETRY,CHANNEL_NUMBER,SFD_ID,PREAMBLE_CODE_INDEX,PRF_MODE,TX_ADAPTIVE_PAYLOAD_POWER,AOA_RESULT_REQ,RNG_DATA_NTF,DATA_TRANSFER_MODE,RANGING_START_OFFSET,STS_CONFIG,VENDOR_ID,STATIC_STS_IV,NUMBER_OF_STS_SEGMENTS,STS_LENGTH,RANGING_ROUND_CONTROL,RESULT_REPORT_CONFIG,MAC_FCS_TYPE,PSDU_DATA_RATE,PREAMBLE_DURATION,RANGING_TIME_STRUCT,HOPPING_MODE,NO_OF_CONTROLEES,DST_MAC_ADDRESS,RANGING_DURATION,SESSION_INFO_NTF,RESPONDER_SLOT_INDEX};
 enum {kUWB_RangingRoundUsage_DS_TWR=2,kUWB_RfFrameConfig_SP1=1,kUWB_PrfMode_62_4MHz=0,Data_Transfer_Mode_Raw=0,kUWB_DeviceRole_Initiator=1,kUWB_DeviceRole_Responder=0,kUWB_DeviceType_Controller=1,kUWB_DeviceType_Controlee=0,kUWB_MultiNodeMode_UniCast=0,UWBD_RANGING_SESSION=0,kUWB_ScheduledMode_TimeScheduled=1};
 typedef enum {UWBD_RANGING_DATA,UWBD_DATA_RCV_NTF,UWBD_DATA_TRANSMIT_NTF,UWBD_SESSION_DATA,UWBD_DEVICE_RESET,UWBD_RECOVERY_NTF} eNotificationType;
 typedef struct {uint8_t mac_addr[8],status,nLos;uint16_t distance;} phRangingMesr_t;
-typedef struct {uint32_t sessionHandle,seq_ctr;uint8_t no_of_measurements,ranging_measure_type,mac_addr_mode_indicator;union {phRangingMesr_t range_meas_twr[5];} ranging_meas;} phRangingData_t;
+typedef struct {uint32_t sessionHandle,seq_ctr;uint8_t no_of_measurements,ranging_measure_type,mac_addr_mode_indicator;union {phRangingMesr_t range_meas_twr[12];} ranging_meas;} phRangingData_t;
 typedef struct {uint32_t session_id;uint8_t src_address[8],dst_endpoint,status;uint16_t data_size;uint8_t *data;} phUwbRcvDataPkt_t;
 typedef struct {uint32_t sessionHandle;uint8_t state,reason_code;} phUwbSessionInfo_t;
 typedef struct {uint32_t session_id;uint8_t mac_address[8],sequence_number,dst_endpoint;uint16_t data_size;uint8_t *data;} phUwbDataPkt_t;

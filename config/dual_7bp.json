@@ -1,0 +1,110 @@
+{
+  "name": "dual_7bp_v0.3.0",
+  "confirmed_against_anchors": true,
+  "radio": {
+    "channel": 5,
+    "sfd": 2,
+    "preamble": 9,
+    "rframe": 3,
+    "slots": 25,
+    "slot_duration": 2400,
+    "vendor_id": 1800,
+    "static_sts_iv": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "tags": {
+    "A": {
+      "node_id": 1,
+      "address": 34952,
+      "sessions": [
+        {
+          "session_id": 287454020,
+          "tag_initiator": true,
+          "interval_ms": 500,
+          "start_offset": 0,
+          "channel": 5,
+          "anchors": [
+            {
+              "anchor_id": 4369,
+              "anchor_address": 4369
+            },
+            {
+              "anchor_id": 8738,
+              "anchor_address": 8738
+            },
+            {
+              "anchor_id": 13107,
+              "anchor_address": 13107
+            },
+            {
+              "anchor_id": 17476,
+              "anchor_address": 17476
+            },
+            {
+              "anchor_id": 21845,
+              "anchor_address": 21845
+            },
+            {
+              "anchor_id": 26214,
+              "anchor_address": 26214
+            },
+            {
+              "anchor_id": 30583,
+              "anchor_address": 30583
+            }
+          ]
+        }
+      ]
+    },
+    "B": {
+      "node_id": 2,
+      "address": 39321,
+      "sessions": [
+        {
+          "session_id": 287454021,
+          "tag_initiator": true,
+          "interval_ms": 500,
+          "start_offset": 0,
+          "channel": 9,
+          "anchors": [
+            {
+              "anchor_id": 4369,
+              "anchor_address": 4369
+            },
+            {
+              "anchor_id": 8738,
+              "anchor_address": 8738
+            },
+            {
+              "anchor_id": 13107,
+              "anchor_address": 13107
+            },
+            {
+              "anchor_id": 17476,
+              "anchor_address": 17476
+            },
+            {
+              "anchor_id": 21845,
+              "anchor_address": 21845
+            },
+            {
+              "anchor_id": 26214,
+              "anchor_address": 26214
+            },
+            {
+              "anchor_id": 30583,
+              "anchor_address": 30583
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "profile_origin": "Matched new 0.3.0 fixed-node firmware, retaining labels 1111..7777; replaces old single-controller firmware; hardware unverified"
+}

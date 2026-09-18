@@ -2,27 +2,81 @@
   "sdk": "SR040 v04.03.14 + SR150 v04.08.01 with Murata Type2BP patch",
   "toolchain": "xpack arm-none-eabi 13.2.1-1.1",
   "hardware_tested": false,
-  "mode": "Real ranging; matching A/B tags and BP1/BP2/BP3 anchors",
+  "mode": "A/B controllers, seven multicast anchors 1111..7777; fixed firmware update required",
   "files": {
-    "2dk_A_selftest_v0.1.0.bin": {
-      "bytes": 87120,
-      "sha256": "00e1a641738762750d662fb7613778ce9ba7d6d631f5ac5c0179c6622510b485",
+    "2bp_1111_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "9dd380d3f7c973052a241005d32f87911b3d5d754251c814cd45684266498726",
       "vector_checksum": "PASS",
       "header_crc": "PASS",
       "boot_block": "PASS",
-      "load_address": 0
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
     },
-    "2dk_B_selftest_v0.1.0.bin": {
-      "bytes": 87120,
-      "sha256": "0813b9ec35521616ce394840dc155fe1d68e3c8a0caf75f4b8471b1b944f5307",
+    "2bp_2222_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "d6b0fe5e038d158d26b2fe6dd9b5554a2026b46a9f395390ce7962da6e8372a7",
       "vector_checksum": "PASS",
       "header_crc": "PASS",
       "boot_block": "PASS",
-      "load_address": 0
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
     },
-    "2dk_A_range_v0.2.0.bin": {
-      "bytes": 277432,
-      "sha256": "4a746cbd6d41658a3c3f4ec6af413fda92d8875e125721f3c14aef8f78a19f73",
+    "2bp_3333_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "5dc4e50d2cf3d7c2e58efa793e3876f5209e70d0912d06f5537fe6d55681bdb8",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
+    },
+    "2bp_4444_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "001bcdf1723de2509fb8f2fcbbd15c4e83d8fa7fa4c529e4c4a9c47630f64ddd",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
+    },
+    "2bp_5555_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "2c8680e794d91d947e16cc3b90ef0a72112d6ec45a363dedab1c4cdab7c5ab48",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
+    },
+    "2bp_6666_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "933edd2124e72f9ff9f9d81ee3c7692cf45e44728a315866532dcf77713470ca",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
+    },
+    "2bp_7777_anchor_v0.3.0.bin": {
+      "bytes": 366796,
+      "sha256": "e95c8479fa8213e302307f8a5e93caebfe492264db5bd3a53942bae0f41e6aec",
+      "vector_checksum": "PASS",
+      "header_crc": "PASS",
+      "boot_block": "PASS",
+      "load_address": 0,
+      "stated_image_size": 393216,
+      "accelerometer_linked": false
+    },
+    "2dk_A_range_v0.3.0.bin": {
+      "bytes": 277448,
+      "sha256": "12129ce7be7672216d52f6421b4edc39d7a71b8e283f2aa4a12d2d19b469e174",
       "vector_checksum": "PASS",
       "header_crc": "PASS",
       "boot_block": "PASS",
@@ -30,47 +84,17 @@
       "stated_image_size": 294912,
       "accelerometer_linked": false
     },
-    "2dk_B_range_v0.2.0.bin": {
-      "bytes": 277432,
-      "sha256": "4d0302a48bd23d3efa315dea1a9010a16915a80f1caf65d3f51a0d4795b3760c",
+    "2dk_B_range_v0.3.0.bin": {
+      "bytes": 277448,
+      "sha256": "52542ce2d23dc693caf7e73a34057e056744a50d1772fed1247a84752f620efd",
       "vector_checksum": "PASS",
       "header_crc": "PASS",
       "boot_block": "PASS",
       "load_address": 0,
       "stated_image_size": 294912,
-      "accelerometer_linked": false
-    },
-    "2bp_BP1_anchor_v0.2.0.bin": {
-      "bytes": 366636,
-      "sha256": "e7ae44878463315cd8ca55b527f0b49812689d2f0910bddccbbe5d9a84e1ca93",
-      "vector_checksum": "PASS",
-      "header_crc": "PASS",
-      "boot_block": "PASS",
-      "load_address": 0,
-      "stated_image_size": 393216,
-      "accelerometer_linked": false
-    },
-    "2bp_BP2_anchor_v0.2.0.bin": {
-      "bytes": 366636,
-      "sha256": "69b503a44336cf6ad9e10e5982399e7f70385b2e26fc9e4d1c4be48369bd0901",
-      "vector_checksum": "PASS",
-      "header_crc": "PASS",
-      "boot_block": "PASS",
-      "load_address": 0,
-      "stated_image_size": 393216,
-      "accelerometer_linked": false
-    },
-    "2bp_BP3_anchor_v0.2.0.bin": {
-      "bytes": 366636,
-      "sha256": "86e3d509f8f9a57cf99704a46264c0490e103e553464d769c7bedbf85094db95",
-      "vector_checksum": "PASS",
-      "header_crc": "PASS",
-      "boot_block": "PASS",
-      "load_address": 0,
-      "stated_image_size": 393216,
       "accelerometer_linked": false
     }
   },
   "boards": "Type2DK Rev.4.1 and Type2BP EVK Rev.4.1",
-  "profile": "config/dual_3bp.json"
+  "profile": "config/dual_7bp.json"
 }

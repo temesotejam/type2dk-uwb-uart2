@@ -22,7 +22,7 @@ struct Port {
     uint32_t epoch=0,bytes=0,ringDrops=0,fifoErrors=0,frameErrors=0,parityErrors=0,breaks=0,maxBatch=0;
     intr_handle_t interrupt=nullptr;esp_err_t init=ESP_FAIL;
     event_parser_t parser={};event_tracker_t tracker={};uint32_t readerEpoch=0;
-    event_t latest={};range_cell_t ranges[3]={};
+    event_t latest={};range_cell_t ranges[RANGE_ANCHOR_COUNT]={};
     uint64_t lastRx=0,maxSpan=0;
     uint32_t rangeCount=0,failedCount=0,testCount=0;
 };
@@ -134,9 +134,9 @@ void accept(Port &p,const event_t &e,uint64_t first,uint64_t last){
     // cm -> mm is only a unit conversion. Sensor quantization remains 10 mm.
     int mm=(e.flags&EVENT_DISTANCE_VALID)?(int)e.range_cm*10:-1;
     snprintf(line.text,sizeof(line.text),
-        "UWB_EVENT,port=%c,node=%u,type=%s,boot=%08lx,seq=%lu,anchor=%u,sid=%08lx,uci_seq=%lu,range_mm=%d,raw_cm=%u,status=0x%02x,nlos_raw=%u,profile=%u,callback_ms=%lu,tx_start_ms=%lu,queue_ms=%lu,rx_first_us=%llu,rx_last_us=%llu,rx_span_us=%llu,tx_drop=%lu,queue_depth=%u,state=%u,reason=0x%02x,fault=%u\n",
+        "UWB_EVENT,port=%c,node=%u,type=%s,boot=%08lx,seq=%lu,anchor=%u,anchor_hex=%04x,sid=%08lx,uci_seq=%lu,range_mm=%d,raw_cm=%u,status=0x%02x,nlos_raw=%u,profile=%u,callback_ms=%lu,tx_start_ms=%lu,queue_ms=%lu,rx_first_us=%llu,rx_last_us=%llu,rx_span_us=%llu,tx_drop=%lu,queue_depth=%u,state=%u,reason=0x%02x,fault=%u\n",
         p.node==1?'A':'B',e.node,e.type==EVENT_RANGE?"RANGE":e.type==EVENT_TEST?"TEST":"HEALTH",
-        (unsigned long)e.boot,(unsigned long)e.sequence,e.anchor,(unsigned long)e.session_id,
+        (unsigned long)e.boot,(unsigned long)e.sequence,e.anchor,e.anchor,(unsigned long)e.session_id,
         (unsigned long)e.uci_sequence,mm,e.range_cm,e.status,e.nlos,(e.flags&EVENT_PROFILE_CONFIRMED)?1:0,
         (unsigned long)e.callback_ms,(unsigned long)e.tx_start_ms,(unsigned long)(e.tx_start_ms-e.callback_ms),
         (unsigned long long)first,(unsigned long long)last,(unsigned long long)(last-first),
@@ -196,20 +196,25 @@ void draw(){
     canvas.fillScreen(0x08121f);canvas.setTextColor(0xe7f1ff);canvas.setTextSize(1);
     canvas.drawString("2DK A+B / " FW_VERSION,10,8);
     canvas.drawString("PORT A: yellow=A  white=B  38400",10,25);
-    for(unsigned i=0;i<2;i++){
-        auto &p=ports[i];int y=47+(int)i*82;
-        canvas.setTextColor(0x45d6d0);canvas.setTextSize(2);canvas.setCursor(10,y);
-        canvas.printf("%c  %s",i?'B':'A',state(p,now));
-        canvas.setTextSize(1);canvas.setTextColor(0xe7f1ff);canvas.setCursor(10,y+23);
-        for(unsigned j=0;j<3;j++){
-            const auto &c=p.ranges[j];canvas.setCursor(10,y+21+12*j);
-            if(range_view_fresh(&c,now))canvas.printf("BP%u: %5u mm  nLos %u",j+1,(unsigned)c.event.range_cm*10,c.event.nlos);
-            else if(c.seen&&now-c.rx_us<3000000u)canvas.printf("BP%u: --  status %02x  state %u",j+1,c.event.status,c.event.session_state);
-            else canvas.printf("BP%u: --",j+1);
+    canvas.setTextColor(0x45d6d0);
+    canvas.setCursor(66,45);canvas.printf("A: %s",state(ports[0],now));
+    canvas.setCursor(193,45);canvas.printf("B: %s",state(ports[1],now));
+    canvas.setTextColor(0x9db2cb);canvas.setCursor(10,63);canvas.print("ANCHOR   A: mm / nLos        B: mm / nLos");
+    for(unsigned j=0;j<RANGE_ANCHOR_COUNT;j++){
+        int y=83+17*j;canvas.setTextColor(0x45d6d0);canvas.setCursor(10,y);
+        canvas.printf("%04x",range_anchor_ids[j]);
+        for(unsigned i=0;i<2;i++){
+            const auto &c=ports[i].ranges[j];canvas.setCursor(66+127*i,y);
+            canvas.setTextColor(0xe7f1ff);
+            if(range_view_fresh(&c,now))canvas.printf("%5u / %3u",(unsigned)c.event.range_cm*10,c.event.nlos);
+            else if(c.seen&&now>=c.rx_us&&now-c.rx_us<3000000u)canvas.printf("-- st:%02x",c.event.status);
+            else canvas.print("--");
         }
-        canvas.setCursor(10,y+58);canvas.printf("RX %lu  MISS %lu  BAD %lu",(unsigned long)p.tracker.accepted,
-              (unsigned long)p.tracker.missing,(unsigned long)p.parser.crc_or_format_errors);
     }
+    canvas.setTextColor(0x9db2cb);canvas.setCursor(10,204);
+    canvas.printf("MISS A:%lu B:%lu  CRC A:%lu B:%lu",(unsigned long)ports[0].tracker.missing,
+        (unsigned long)ports[1].tracker.missing,(unsigned long)ports[0].parser.crc_or_format_errors,
+        (unsigned long)ports[1].parser.crc_or_format_errors);
     canvas.setTextColor(0xffc66d);canvas.setCursor(10,220);
     if(usbInit!=ESP_OK)canvas.printf("USB init: %s",esp_err_to_name(usbInit));
     else canvas.printf("USB TX %lu bytes / drop %lu",(unsigned long)cores3_usb_tx_bytes(),(unsigned long)getLogDrops());

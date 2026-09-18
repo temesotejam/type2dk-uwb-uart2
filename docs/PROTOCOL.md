@@ -59,7 +59,7 @@ UCI通知自体が来ない場合はRANGEを捏造しません。2秒周期のHE
 - `tx_drop`、Core側 `ring_drop` / `fifo_error` / `bad`、USB側 `log_drop` は分けます。
 - `wrong_node` が増える場合はA/B配線または書き込んだBINの取り違えです。
 - 3秒間新しい実測がない距離は画面から消します。HEALTHが来ても距離の鮮度は更新しません。
-- CoreS3の画面は各タグの最新の1件を表示。全anchorのイベントはUSBに出力します。
+- CoreS3 0.3.0は1111〜7777の7行×A/Bの最新距離を表示。全anchorのイベントはUSBに出力します。
 - USBを閉じてもUART取得は継続。ログの破棄は `log_drop` に記録します。
   0.1.1以降は `log_queue_drop`（アプリ側キュー満杯）、`log_write_drop`（USBドライバへの
   全行投入が25ms以内にできない）、`log_format_drop`（行のサイズ超過等）の合計です。
@@ -99,3 +99,17 @@ Tera Termの「ファイル→ログ」でBinaryを有効、TimestampとInclude 
 いっぱいの場合に新しい行を `log_queue_drop` として破棄します。
 `usb_waits` は100msの投入待ちがタイムアウトした回数、`log_pending` は生成時のキュー行数です。
 `usb_tx_bytes` はUSB FIFOへ書いたバイト数であり、PCの保存完了通知ではありません。
+
+## 0.3.0 / 7相手の識別
+
+`anchor`フィールドは固定側の16bitアドレス（0x1111〜0x7777）です。
+USBの`anchor`は10進、追加の`anchor_hex`は基板ラベルに合わせた4桁16進（例7777）です。
+1つのUCI通知に7相手が含まれても、相手MACで個別に選別して1件ずつ送ります。
+通知内の未知MACと同じMACの重複は無視します。
+同じ`uci_seq`が異なる相手に現れるのは正常です。相手ごとの比較キーは`port + session_id + anchor`です。
+A/Bは物理UARTとnode IDで区別し、無線のsession IDも分かれています。
+
+`HEALTH`の`anchor=0`はセッション全体の状態を表し、Idle/異常通知では該当session IDの全距離表示を無効化します。
+HEALTH復帰だけで以前の距離を復活させません。
+同じ測距通知の7件は同じ`callback_ms`を持ちますが、UARTは順番に送るので`queue_ms`と受信時刻が異なります。
+これをUWB測距時刻の差として解釈しないでください。

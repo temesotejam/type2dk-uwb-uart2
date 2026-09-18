@@ -58,8 +58,26 @@ int main(void){
     for(unsigned i=0;i<TAG_SESSION_COUNT;i++){
         assert(configure(&tag_sessions[i]));
         assert(ev_u16(configured.deviceMacAddr)==TAG_ADDRESS);
-        assert(ev_u16(configured.dstMacAddr)==tag_sessions[i].peer);
+        const tag_session_t *s=&tag_sessions[i];
+        assert(configured.noOfControlees==s->count&&configured.multiNodeMode==(s->count>1));
+        for(unsigned j=0;j<s->count;j++)assert(ev_u16(configured.dstMacAddr+2*j)==s->peers[j]);
     }
+    // One notification may carry all seven peers, in arbitrary order.
+    received_count=0;r.no_of_measurements=tag_sessions[0].count;
+    for(unsigned j=0;j<r.no_of_measurements;j++){
+        unsigned k=r.no_of_measurements-1-j;
+        phRangingMesr_t *mm=&r.ranging_meas.range_meas_twr[j];
+        memset(mm,0,sizeof(*mm));ev_p16(mm->mac_addr,tag_sessions[0].peers[k]);
+        mm->distance=(uint16_t)(200+k);mm->nLos=(uint8_t)k;
+    }
+    before=api_calls;on_range(&r);assert(api_calls==before&&received_count==r.no_of_measurements);
+    for(unsigned j=0;j<received_count;j++)assert(received[j].anchor==tag_sessions[0].anchors[received_count-1-j]);
+    if(r.no_of_measurements>1){
+        r.ranging_meas.range_meas_twr[1]=r.ranging_meas.range_meas_twr[0];
+        received_count=0;on_range(&r);assert(received_count==r.no_of_measurements-1u);
+    }
+    received_count=0;send_health();assert(received_count==TAG_SESSION_COUNT);
+    for(unsigned j=0;j<received_count;j++)assert(received[j].type==EVENT_HEALTH&&received[j].anchor==0);
     clock_ms=1000;hardware_state=UWBAPI_SESSION_IDLE;assert(start_session(0,"TEST"));
     assert(starts==1&&states[0]==3);
     hardware_state=UWBAPI_SESSION_ACTIVATED;clock_ms=2000;

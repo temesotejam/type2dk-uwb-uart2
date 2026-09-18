@@ -51,14 +51,14 @@ for p in (ROOT/'type2bp/licenses').iterdir():
         (licenses/'type2bp'/p.stem).write_bytes(base64.b64decode(p.read_text()))
     elif p.is_file():
         shutil.copyfile(p, licenses/'type2bp'/p.name)
-shutil.copyfile(ROOT/'config/dual_3bp.json', out/'dual_3bp.json')
-info = {'version': '0.2.0', 'commit': a.sha, 'hardware_tested': False,
-        'type2dk_mode': 'Real ranging; matched Type2BP BP1/BP2/BP3; optional old UART test BINs included', 'central': 'CoreS3 PORT A RX2 + RX1',
+shutil.copyfile(ROOT/'config/dual_7bp.json', out/'dual_7bp.json')
+info = {'version': '0.3.0', 'commit': a.sha, 'hardware_tested': False,
+        'type2dk_mode': 'Two controllers, seven anchors 1111..7777; requires updated fixed firmware', 'central': 'CoreS3 PORT A RX2 + RX1',
         'files': {p.name: {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
                   for p in out.glob('*.bin')}}
 (out/'build-info.json').write_text(json.dumps(info, indent=2)+'\n')
 (out/'SHA256SUMS.txt').write_text(''.join(f'{v["sha256"]}  {k}\n' for k, v in info['files'].items()))
-zip_path = out/'type2dk-uwb-uart2-0.2.0-ranging.zip'
+zip_path = out/'type2dk-uwb-uart2-0.3.0-ranging.zip'
 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as z:
     for p in sorted(out.rglob('*')):
         if p != zip_path and p.is_file():

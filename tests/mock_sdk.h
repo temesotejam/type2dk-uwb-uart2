@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #define FALSE 0
-#define MAX_NUM_RESPONDERS 5
+#define MAX_NUM_RESPONDERS 12
 #define MEASUREMENT_TYPE_TWOWAY 1
 #define UWBAPI_STATUS_OK 0
 #define UWBAPI_STATUS_FAILED 2
@@ -24,11 +24,11 @@ enum {RANGING_ROUND_USAGE,RFRAME_CONFIG,SLOTS_PER_RR,SLOT_DURATION,RANGING_INTER
 enum {kUWB_RangingRoundUsage_DS_TWR=2,kUWB_RfFrameConfig_SP1=1,kUWB_PrfMode_62_4MHz=0,Data_Transfer_Mode_Raw=0,kUWB_DeviceRole_Initiator=1,kUWB_DeviceRole_Responder=0,kUWB_DeviceType_Controller=1,kUWB_DeviceType_Controlee=0,kUWB_MultiNodeMode_UniCast=0,UWBD_RANGING_SESSION=0};
 typedef enum {UWBD_RANGING_DATA,UWBD_DATA_RCV_NTF,UWBD_DATA_TRANSMIT_NTF,UWBD_SESSION_DATA,UWBD_DEVICE_RESET,UWBD_RECOVERY_NTF} eNotificationType;
 typedef struct {uint8_t mac_addr[8],status,nLos;uint16_t distance;} phRangingMesr_t;
-typedef struct {uint32_t sessionId,seq_ctr;uint8_t no_of_measurements,ranging_measure_type,mac_addr_mode_indicator;union {phRangingMesr_t range_meas_twr[5];} ranging_meas;} phRangingData_t;
+typedef struct {uint32_t sessionId,seq_ctr;uint8_t no_of_measurements,ranging_measure_type,mac_addr_mode_indicator;union {phRangingMesr_t range_meas_twr[12];} ranging_meas;} phRangingData_t;
 typedef struct {uint32_t session_id;uint8_t src_address[8],dst_endpoint,status;uint16_t data_size;uint8_t *data;} phUwbRcvDataPkt_t;
 typedef struct {uint32_t session_id;uint8_t state,reason_code;} phUwbSessionInfo_t;
 typedef struct {uint32_t session_id;uint8_t mac_address[8],sequence_number,dst_endpoint;uint16_t data_size;uint8_t *data;} phUwbDataPkt_t;
-typedef struct {uint8_t deviceRole,deviceType,multiNodeMode,noOfControlees,macAddrMode,deviceMacAddr[8],dstMacAddr[40];} phRangingParams_t;
+typedef struct {uint8_t deviceRole,deviceType,multiNodeMode,noOfControlees,macAddrMode,deviceMacAddr[8],dstMacAddr[96];} phRangingParams_t;
 typedef struct {eAppConfig id;uint32_t value;const uint8_t *bytes;unsigned length;} UWB_AppParams_List_t;
 #define UWB_SET_APP_PARAM_VALUE(k,v) {k,v,NULL,0}
 #define UWB_SET_APP_PARAM_ARRAY(k,p,n) {k,0,p,n}

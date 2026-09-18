@@ -37,11 +37,14 @@ static void on_range(const phRangingData_t *r){
     if(!r || r->ranging_measure_type!=MEASUREMENT_TYPE_TWOWAY || r->mac_addr_mode_indicator!=0 ||
        r->no_of_measurements>MAX_NUM_RESPONDERS)return;
     int si=session_index(r->sessionId);if(si<0)return;
+    const tag_session_t *s=&tag_sessions[si];uint16_t seen=0;
     for(unsigned i=0;i<r->no_of_measurements;i++){
         const phRangingMesr_t *m=&r->ranging_meas.range_meas_twr[i];
-        if(ev_u16(m->mac_addr)!=tag_sessions[si].peer)continue;
+        unsigned peer=0;for(;peer<s->count;peer++)if(ev_u16(m->mac_addr)==s->peers[peer])break;
+        if(peer==s->count||(seen&(1u<<peer)))continue;
+        seen|=(uint16_t)(1u<<peer);
         event_t e={0};e.type=EVENT_RANGE;e.callback_ms=at;e.uci_sequence=r->seq_ctr;
-        e.session_id=r->sessionId;e.anchor=tag_sessions[si].anchor;e.range_cm=m->distance;
+        e.session_id=r->sessionId;e.anchor=s->anchors[peer];e.range_cm=m->distance;
         e.status=m->status;e.nlos=m->nLos;e.session_state=states[si];e.reason=reasons[si];
         if(m->status==UWBAPI_STATUS_OK && m->distance!=EVENT_NO_DISTANCE){
             e.flags=EVENT_DISTANCE_VALID;last_range[si]=at;
@@ -74,7 +77,7 @@ static bool configure(const tag_session_t *s)
         UWB_SET_APP_PARAM_VALUE(SLOT_DURATION,TAG_RADIO_SLOT_DURATION),
         UWB_SET_APP_PARAM_VALUE(RANGING_INTERVAL,s->interval),
         UWB_SET_APP_PARAM_VALUE(MAX_RR_RETRY,0),
-        UWB_SET_APP_PARAM_VALUE(CHANNEL_NUMBER,TAG_RADIO_CHANNEL),
+        UWB_SET_APP_PARAM_VALUE(CHANNEL_NUMBER,s->channel),
         UWB_SET_APP_PARAM_VALUE(SFD_ID,TAG_RADIO_SFD),
         UWB_SET_APP_PARAM_VALUE(PREAMBLE_CODE_INDEX,TAG_RADIO_PREAMBLE),
         UWB_SET_APP_PARAM_VALUE(PRF_MODE,kUWB_PrfMode_62_4MHz),
@@ -99,18 +102,20 @@ static bool configure(const tag_session_t *s)
     if(!step_ok("CONFIG",UwbApi_SetAppConfigMultipleParams(s->id,COUNT(cfg),cfg),s->id))return false;
     r.deviceRole=s->init?kUWB_DeviceRole_Initiator:kUWB_DeviceRole_Responder;
     r.deviceType=s->init?kUWB_DeviceType_Controller:kUWB_DeviceType_Controlee;
-    r.multiNodeMode=kUWB_MultiNodeMode_UniCast;r.noOfControlees=1;r.macAddrMode=0;
-    ev_p16(r.deviceMacAddr,TAG_ADDRESS);ev_p16(r.dstMacAddr,s->peer);
+    r.multiNodeMode=s->count>1?1:0;r.noOfControlees=s->count;r.macAddrMode=0;
+    ev_p16(r.deviceMacAddr,TAG_ADDRESS);
+    for(unsigned i=0;i<s->count;i++)ev_p16(r.dstMacAddr+2*i,s->peers[i]);
     if(!step_ok("PEERS",UwbApi_SetRangingParams(s->id,&r),s->id))return false;
     if(!step_ok("READBACK",UwbApi_GetRangingParams(s->id,&check),s->id))return false;
     if(check.deviceRole!=r.deviceRole || check.deviceType!=r.deviceType || check.multiNodeMode!=r.multiNodeMode ||
-       check.noOfControlees!=1 || check.macAddrMode!=0 || memcmp(check.deviceMacAddr,r.deviceMacAddr,2) ||
-       memcmp(check.dstMacAddr,r.dstMacAddr,2))return false;
+       check.noOfControlees!=s->count || check.macAddrMode!=0 || memcmp(check.deviceMacAddr,r.deviceMacAddr,2) ||
+       memcmp(check.dstMacAddr,r.dstMacAddr,2*s->count))return false;
     /* Read actual radio/timing values before START, not just our requested values. */
     const struct {eAppConfig id;uint32_t expected;const char *name;} verify[]={
         {SLOT_DURATION,TAG_RADIO_SLOT_DURATION,"SLOT"},{RANGING_INTERVAL,s->interval,"INTERVAL"},
         {SLOTS_PER_RR,TAG_RADIO_SLOTS,"SLOTS"},{RFRAME_CONFIG,TAG_RADIO_RFRAME,"RFRAME"},
         {SFD_ID,TAG_RADIO_SFD,"SFD"},{RANGING_START_OFFSET,s->offset,"OFFSET"},
+        {CHANNEL_NUMBER,s->channel,"CHANNEL"},{PREAMBLE_CODE_INDEX,TAG_RADIO_PREAMBLE,"PREAMBLE"},
     };
     for(unsigned i=0;i<COUNT(verify);i++){
         uint32_t value=0;
@@ -120,8 +125,9 @@ static bool configure(const tag_session_t *s)
             (unsigned long)verify[i].expected,(unsigned)st);
         if(st!=UWBAPI_STATUS_OK || value!=verify[i].expected)return false;
     }
-    PRINTF("SESSION,NODE=%d,SID=%08lx,INIT=%u,SELF=%04x,PEER=%04x,INTERVAL_MS=%lu\r\n",
-        TAG_NODE,(unsigned long)s->id,s->init,TAG_ADDRESS,s->peer,(unsigned long)s->interval);
+    PRINTF("SESSION,NODE=%d,SID=%08lx,INIT=%u,SELF=%04x,PEERS=%u,CHANNEL=%u,INTERVAL_MS=%lu\r\n",
+        TAG_NODE,(unsigned long)s->id,s->init,TAG_ADDRESS,s->count,s->channel,(unsigned long)s->interval);
+    for(unsigned i=0;i<s->count;i++)PRINTF("ANCHOR,NODE=%d,ADDR=%04x,SLOT=%u\r\n",TAG_NODE,s->peers[i],i+1);
     return true;
 }
 /* START rejection is session-local. Keep collecting and retry with backoff.
@@ -184,7 +190,8 @@ static bool recover_tag_sessions(void)
 static void send_health(void){
     for(unsigned i=0;i<TAG_SESSION_COUNT;i++){
         event_t e={0};e.type=EVENT_HEALTH;e.callback_ms=now_ms();
-        e.session_id=tag_sessions[i].id;e.anchor=tag_sessions[i].anchor;
+        /* One session-wide report, so health never adds a seven-frame burst. */
+        e.session_id=tag_sessions[i].id;e.anchor=0;
         e.range_cm=EVENT_NO_DISTANCE;e.status=255;e.nlos=255;
         e.session_state=states[i];e.reason=reasons[i];
         e.fault=reset_seen?3:(!TAG_PROFILE_CONFIRMED?4:0);
@@ -199,7 +206,7 @@ static OSAL_TASK_RETURN_TYPE tag_task(void *unused){
     (void)unused;heartbeat_ms=now_ms();
     memset((void*)states,255,sizeof(states));memset((void*)reasons,255,sizeof(reasons));
     if(RNG_Init()!=gRngSuccess_d || RNG_HwGetRandomNo(&boot_id)!=gRngSuccess_d)goto fail;
-    PRINTF("BOOT,TYPE2DK_EVENT_V0.2.0,node=%u,boot=%08lx,profile_confirmed=%u,selftest=%u,clock_quantum_ms=%u\r\n",
+    PRINTF("BOOT,TYPE2DK_EVENT_V0.3.0,node=%u,boot=%08lx,profile_confirmed=%u,selftest=%u,clock_quantum_ms=%u\r\n",
         TAG_NODE,(unsigned long)boot_id,TAG_PROFILE_CONFIRMED,TAG_SELF_TEST,(unsigned)portTICK_PERIOD_MS);
     if(!event_uart_start(boot_id))goto fail;
     if(TAG_SELF_TEST){

@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 ap=argparse.ArgumentParser()
 ap.add_argument('--sdk',required=True)
 ap.add_argument('--gcc-bin',default='')
-ap.add_argument('--anchor',type=int,choices=[1,2,3],required=True)
+ap.add_argument('--anchor',type=lambda x:int(x,0),required=True)
 ap.add_argument('--out',default='build')
 ap.add_argument('--profile',required=True)
 a=ap.parse_args(); sdk=Path(a.sdk).resolve(); out=Path(a.out).resolve(); out.mkdir(parents=True,exist_ok=True)
@@ -61,7 +61,7 @@ if failed:
 ld=(sdk/'boards/Rhodes4_SPI/QN9090_UWB_TAG_FW.ld').read_text()
 ld=re.sub(r'GROUP\s*\(.*?\)','',ld,flags=re.S)
 (out/'firmware.ld').write_text(ld)
-elf=out/f'2bp_BP{a.anchor}_anchor_v0.2.0.elf'
+elf=out/f'2bp_{a.anchor:04x}_anchor_v0.3.0.elf'
 libs=[str(f) for f in (sdk/'ext/boards/qn9090/bluetooth/libs').glob('*.a')]
 cmd=[prefix+'gcc','-mcpu=cortex-m4','-mthumb','-mfloat-abi=soft','-nostartfiles','--specs=nano.specs','--specs=nosys.specs','-Wl,--defsym=__heap_size__=4096','-Wl,--defsym=__app_stated_size__=0x60000','-Wl,--gc-sections','-Wl,--print-memory-usage','-Wl,-Map='+str(out/'firmware.map'),'-T',str(out/'firmware.ld')]+[r[2] for r in results]+['-Wl,--start-group']+libs+['-lc_nano','-lm','-lgcc','-lnosys','-Wl,--end-group','-o',str(elf)]
 r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)

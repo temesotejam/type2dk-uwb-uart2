@@ -7,13 +7,16 @@ CoreS3 の PORT A を **2本とも RX** として使い、共通の µs 時計�
 
 ## 現在の到達点
 
-- **0.2.0: 固定側Type2BP BP1/BP2/BP3と、2DK-A/Bの実測距用BINを配布します。**
-- 対象基板は **Type2DK Rev.4.1 / Type2BP EVK Rev.4.1**。CoreS3の画面には各A/BのBP1〜BP3を表示します。
-- 配布する全5台のUWB設定を同じJSONから生成。加速度センサ・BLE・2DK間通信は使用しません。
-- A/Bの同時UART受信は実機確認済み。**2BPとの実測距、複数BPの同時動作は実機未確認です。**
-- USBログは0.1.2で操作なしの欠落が残り、0.2.0で128行保持・再試行を追加しました。実機で再評価します。
+- **0.3.0: 1111・2222・3333・4444・5555・6666・7777の固定側7台に対応。**
+- 対象は **Type2DK Rev.4.1 ×2 / Type2BP EVK Rev.4.1 ×1〜7**。CoreS3に7行×A/Bの距離・nLosを表示。
+- A/Bは各1つの1対多セッション。AはMAC 0x8888・Ch5、Bは0x9999・Ch9。固定側はA/B用の2セッション。
+- **A/B同時動作を優先する選択により、既存の1111〜6666も固定側ファームウェアの更新が必要です。**
+  番号は維持しますが、旧`anchor1_controlee.hex`をそのまま使う互換版ではありません。
+- 初回は追加2BPの**7777だけ**でA/Bの距離を確認し、その後1111〜6666を追加します。
+- A/B同時UART受信は旧版で実機確認済み。**新しい無線構成・7台同時測距は実機未確認です。**
+- 加速度センサ・BLE・2DK間通信は使用しません。USBの128行保持・再試行を継続します。
 
-**[実測距版の書き込み・配線・確認手順](docs/RANGING_SETUP.md)**
+**[書き込み・配線・確認手順](docs/RANGING_SETUP.md)**
 
 ## 配線
 
@@ -33,14 +36,14 @@ SWDIOを転用するのでSWDデバッグとの同時使用はしません。
 
 **[CoreS3のブラウザ書き込みページ](https://temesotejam.github.io/type2dk-uwb-uart2/)**
 
-同じページから `type2dk-uwb-uart2-0.2.0-ranging.zip` を取得します。
-2DK-A/Bには `2dk_A_range_v0.2.0.bin` / `2dk_B_range_v0.2.0.bin`、
-固定側には `2bp_BP1_anchor_v0.2.0.bin`（追加時はBP2/BP3）を書き込みます。
-まずBP1を1台だけ動かし、CoreS3でA/Bそれぞれの距離を確認します。
-UWB基板はDK6 Windows GUI「任意のBIN」を使用できます。
+同じページから `type2dk-uwb-uart2-0.3.0-ranging.zip` を取得します。
+2DK-A/Bには `2dk_A_range_v0.3.0.bin` / `2dk_B_range_v0.3.0.bin`、
+追加の2BPには `2bp_7777_anchor_v0.3.0.bin` を書き込みます。
+1111〜6666も番号に対応した`2bp_XXXX_anchor_v0.3.0.bin`を用意しています。
+これら固定側BINはType2BP用です。Type2DKには書き込めません。
+UWB基板はDK6 Windows GUI「任意のBIN」、CoreS3は上のページを使用します。
 
-旧 `selftest_v0.1.0.bin` は配線切り分け用として同梱します。
-これは **UART TEST** の合成データで、UWBを起動しません。距離確認には `range_v0.2.0.bin` を使います。
+旧selftest/BP1〜BP3版はGitHubの過去リリースに残しています。0.3.0のZIPには混ぜていません。
 CoreS3のUSBログは115200 bps / 8N1 / フロー制御なし、UWB基板自身のUSBログは3,000,000 bpsです。
 
 ## ビルド・テスト
@@ -60,17 +63,17 @@ python type2dk/build/build.py --sdk /path/to/uwbiot-top --gcc-bin /path/to/toolc
 python type2dk/build/build.py --sdk /path/to/uwbiot-top --gcc-bin /path/to/toolchain/bin --node B --profile config/example_3bp.json --self-test --out build/B
 ```
 
-実測版は `--profile config/dual_3bp.json` を指定し `--self-test` を外します。
+実測版は `--profile config/dual_7bp.json` を指定し `--self-test` を外します。
 2DK SDKには提供元の対応する村田パッチを先に適用してください。
 
 固定側は別の **Type2BP SR150 v04.08.01 SDKと、同梱の村田パッチ**を使用します。
 
 ```sh
 python type2bp/build/prepare_sdk.py /path/to/SR150/uwbiot-top --patch /path/to/2bp_prebuild_v04.08.01.patch
-python type2bp/build/build.py --sdk /path/to/SR150/uwbiot-top --gcc-bin /path/to/toolchain/bin --anchor 1 --profile config/dual_3bp.json --out build/BP1
+python type2bp/build/build.py --sdk /path/to/SR150/uwbiot-top --gcc-bin /path/to/toolchain/bin --anchor 0x7777 --profile config/dual_7bp.json --out build/7777
 ```
 
-`--anchor 2/3`でBP2/BP3をビルドします。SR150新SDKのsession handleとSR040のsession IDは別APIとして処理します。
+`--anchor 0x1111`〜`0x7777`で番号を指定します。SR150新SDKのsession handleとSR040のsession IDは別APIとして処理します。
 SDKとパッチ本体はこのリポジトリに含めません。
 ファームウェアにはSDKの起動処理を含め加速度センサ初期化を入れません。
 

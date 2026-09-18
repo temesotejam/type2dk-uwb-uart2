@@ -24,8 +24,9 @@ tUWBAPI_STATUS UwbApi_SetAppConfigMultipleParams(uint32_t h,unsigned n,const UWB
         if(p[j].id==DST_MAC_ADDRESS)assert(p[j].length==2&&short_addr(p[j].bytes)==anchor_sessions[i].peer);
         if(p[j].id==STATIC_STS_IV)assert(p[j].length==6&&memcmp(p[j].bytes,"\1\2\3\4\5\6",6)==0);
     }
-    assert(vals[CHANNEL_NUMBER]==5&&vals[RFRAME_CONFIG]==1&&vals[STS_CONFIG]==0);
-    assert(vals[RANGING_DURATION]==1000&&vals[RANGING_ROUND_CONTROL]==3&&vals[RESULT_REPORT_CONFIG]==1);
+    assert(vals[CHANNEL_NUMBER]==anchor_sessions[i].channel&&vals[RFRAME_CONFIG]==TAG_RADIO_RFRAME&&vals[STS_CONFIG]==0);
+    assert(vals[RANGING_DURATION]==anchor_sessions[i].interval&&vals[RANGING_ROUND_CONTROL]==3&&vals[RESULT_REPORT_CONFIG]==1);
+    assert(vals[RESPONDER_SLOT_INDEX]==anchor_sessions[i].slot);
     return 0;
 }
 tUWBAPI_STATUS UwbApi_GetAppConfig(uint32_t h,eAppConfig id,uint32_t *v){assert(index_of(h)>=0);*v=vals[id];calls++;return 0;}
@@ -34,7 +35,7 @@ tUWBAPI_STATUS UwbApi_StopRangingSession(uint32_t h){assert(index_of(h)>=0);stop
 tUWBAPI_STATUS UwbApi_GetSessionState(uint32_t h,uint8_t *s){assert(index_of(h)>=0);*s=hwstate;return query_fail?2:0;}
 int main(void){
     for(unsigned i=0;i<2;i++){assert(configure(i));assert(handles[i]!=anchor_sessions[i].id);assert(start(i));}
-    assert(role.deviceRole==1&&role.deviceType==1&&role.scheduledMode==1);
+    assert(role.deviceRole==anchor_sessions[1].init&&role.deviceType==anchor_sessions[1].init&&role.multiNodeMode==anchor_sessions[1].multi&&role.scheduledMode==1);
     phRangingData_t r={0};r.sessionHandle=handles[0];r.ranging_measure_type=1;r.no_of_measurements=1;
     phRangingMesr_t *m=&r.ranging_meas.range_meas_twr[0];m->mac_addr[0]=(uint8_t)anchor_sessions[0].peer;m->mac_addr[1]=(uint8_t)(anchor_sessions[0].peer>>8);m->distance=123;
     unsigned before=calls;clock_ms=100;callback(UWBD_RANGING_DATA,&r);assert(range_ok[0]==1&&last_good[0]==100&&range_ok[1]==0&&calls==before);

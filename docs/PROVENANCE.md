@@ -33,3 +33,12 @@ common runtime/BSD/FreeRTOS notices remain bundled alongside them.
 The SR150 stated ROM image area is 0x60000 bytes (no OTA use) to fit its embedded
 SR150 firmware; the actual flash image and ROM trailer are independently checked.
 All firmware is experimental until validated on the user's hardware.
+
+0.3.0 keeps fixed-node labels 1111..7777 but replaces their radio profile after the
+user selected concurrent A/B operation. The user-supplied `anchor1_controlee.hex`
+was inspected locally (SHA-256 `e53fa7e3f5de98e07bffdc1d3fa9f7fb7ca37df84bf6d8dcc2aa2a6a05900d04`).
+Its application config uses one controller at 0x0000, session 0x11223344, anchor
+0x1111, multicast responder slot 1, Ch9/SP3/SFD2/preamble9, interval 50 ms.
+The inspected HEX is not republished. New fixed-node binaries are built from the
+same supplied SR150 SDK as 0.2.0, with original project application code.
+They are not binary patches or a claim of compatibility with unchanged old anchors.

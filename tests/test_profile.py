@@ -38,7 +38,7 @@ class ProfileTests(unittest.TestCase):
         pairs = set()
         for anchor in (1, 2, 3):
             h = m.generate_anchor(p, anchor)
-            rows = re.findall(r'\{(\d+)u,(\d+)u,(\d+)u,(\d+)u\}', h)
+            rows = re.findall(r'\{(\d+)u,(\d+)u,(\d+)u,(\d+)u,\d+u,\d+u,\d+u,\d+u\}', h)
             self.assertEqual(len(rows), 2)
             for sid, period, peer, node in map(lambda r: map(int, r), rows):
                 name = 'A' if node == 1 else 'B'
@@ -51,6 +51,31 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(len(pairs), 6)
         with self.assertRaises(ValueError):
             m.generate_anchor(self.p, 1)
+
+
+    def test_seven_anchor_multicast(self):
+        p = json.loads((ROOT/'config/dual_7bp.json').read_text())
+        m.validate(p)
+        for node in ('A', 'B'):
+            self.assertEqual(len(p['tags'][node]['sessions']), 1)
+            self.assertEqual(len(m.targets(p['tags'][node]['sessions'][0])), 7)
+        self.assertNotEqual(p['tags']['A']['sessions'][0]['channel'], p['tags']['B']['sessions'][0]['channel'])
+        for i in range(1, 8):
+            anchor = i*0x1111
+            h = m.generate_anchor(p, anchor)
+            self.assertIn(f'#define ANCHOR_ADDRESS {anchor}u', h)
+            for name in ('A','B'):
+                t = p['tags'][name];s = t['sessions'][0]
+                expected = '{%du,%du,%du,%du,0u,1u,%du,%du}' % (s['session_id'],s['interval_ms'],t['address'],t['node_id'],s['channel'],i)
+                self.assertIn(expected,h)
+        bad = copy.deepcopy(p)
+        bad['tags']['A']['sessions'][0]['anchors'].append(bad['tags']['A']['sessions'][0]['anchors'][0])
+        with self.assertRaises(ValueError):m.validate(bad)
+        bad = copy.deepcopy(p)
+        bad['tags']['B']['sessions'][0]['session_id'] = bad['tags']['A']['sessions'][0]['session_id']
+        with self.assertRaises(ValueError):m.validate(bad)
+        bad = copy.deepcopy(p);bad['tags']['B']['sessions'][0]['anchors'].pop()
+        with self.assertRaises(ValueError):m.generate_anchor(bad,0x7777)
 
 
 if __name__ == '__main__':
