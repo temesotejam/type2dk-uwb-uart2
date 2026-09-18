@@ -100,9 +100,10 @@ static bool configure(const tag_session_t *s)
     };
     if(!step_ok("SESSION",UwbApi_SessionInit(s->id,UWBD_RANGING_SESSION),s->id))return false;
     if(!step_ok("CONFIG",UwbApi_SetAppConfigMultipleParams(s->id,COUNT(cfg),cfg),s->id))return false;
+    if(!s->init && !step_ok("RESPONDER_SLOT",UwbApi_SetAppConfig(s->id,RESPONDER_SLOT_INDEX,s->slot),s->id))return false;
     r.deviceRole=s->init?kUWB_DeviceRole_Initiator:kUWB_DeviceRole_Responder;
     r.deviceType=s->init?kUWB_DeviceType_Controller:kUWB_DeviceType_Controlee;
-    r.multiNodeMode=s->count>1?1:0;r.noOfControlees=s->count;r.macAddrMode=0;
+    r.multiNodeMode=s->multi;r.noOfControlees=s->count;r.macAddrMode=0;
     ev_p16(r.deviceMacAddr,TAG_ADDRESS);
     for(unsigned i=0;i<s->count;i++)ev_p16(r.dstMacAddr+2*i,s->peers[i]);
     if(!step_ok("PEERS",UwbApi_SetRangingParams(s->id,&r),s->id))return false;
@@ -125,8 +126,14 @@ static bool configure(const tag_session_t *s)
             (unsigned long)verify[i].expected,(unsigned)st);
         if(st!=UWBAPI_STATUS_OK || value!=verify[i].expected)return false;
     }
-    PRINTF("SESSION,NODE=%d,SID=%08lx,INIT=%u,SELF=%04x,PEERS=%u,CHANNEL=%u,INTERVAL_MS=%lu\r\n",
-        TAG_NODE,(unsigned long)s->id,s->init,TAG_ADDRESS,s->count,s->channel,(unsigned long)s->interval);
+    if(!s->init){
+        uint32_t value=0; tUWBAPI_STATUS st=UwbApi_GetAppConfig(s->id,RESPONDER_SLOT_INDEX,&value);
+        PRINTF("CONFIG,NODE=%d,SID=%08lx,PARAM=RESPONDER_SLOT,VALUE=%lu,EXPECTED=%u,STATUS=%u\r\n",
+            TAG_NODE,(unsigned long)s->id,(unsigned long)value,s->slot,(unsigned)st);
+        if(st!=UWBAPI_STATUS_OK || value!=s->slot)return false;
+    }
+    PRINTF("SESSION,NODE=%d,SID=%08lx,INIT=%u,SELF=%04x,PEERS=%u,MULTI=%u,SLOT=%u,CHANNEL=%u,INTERVAL_MS=%lu\r\n",
+        TAG_NODE,(unsigned long)s->id,s->init,TAG_ADDRESS,s->count,s->multi,s->slot,s->channel,(unsigned long)s->interval);
     for(unsigned i=0;i<s->count;i++)PRINTF("ANCHOR,NODE=%d,ADDR=%04x,SLOT=%u\r\n",TAG_NODE,s->peers[i],i+1);
     return true;
 }
