@@ -52,12 +52,6 @@ void logger(void *){
     LogLine line;
     for(;;)if(xQueueReceive(logQueue,&line,portMAX_DELAY)==pdTRUE){
         size_t n=strlen(line.text);
-        // Our patched IDF driver queues the whole record or returns 0 on timeout.
-        // Its ISR preserves TX wakeups and partial FIFO writes. No Arduino
-        // HWCDC calls (including if(Serial)/flush) may share this peripheral.
-        // Keep this complete record and retry. UART/UI keep running; PSRAM
-        // holds 128 queued records. A prolonged host stall drops NEW records
-        // at enqueue and increments log_queue_drop, without corrupting lines.
         for(;;){
             int written=cores3_usb_write_bytes(line.text,n,pdMS_TO_TICKS(100));
             if(written==(int)n)break;
@@ -67,8 +61,6 @@ void logger(void *){
     }
 }
 
-/* No display, USB, heap allocation or CRC calculation in this ISR.
- * Timestamp means the instant the ISR observes a received byte, not its start bit. */
 void IRAM_ATTR receiveIsr(void *arg){
     auto *p=static_cast<Port*>(arg);
     uint32_t st=uart_ll_get_intsts_mask(p->hw);
@@ -110,8 +102,6 @@ esp_err_t beginPort(Port &p){
     if(e!=ESP_OK)return e;
     e=gpio_set_pull_mode((gpio_num_t)p.pin,GPIO_FLOATING);if(e!=ESP_OK)return e;
     uart_ll_rxfifo_rst(p.hw);uart_ll_clr_intsts_mask(p.hw,UART_LL_INTR_MASK);
-    // Own the interrupt directly; uart_driver_install and uart_isr_register are
-    // deliberately not mixed with this timestamping receiver (IDF 4.4.7).
     e=esp_intr_alloc(uart_periph_signal[p.number].irq,ESP_INTR_FLAG_IRAM|ESP_INTR_FLAG_LEVEL1,
                      receiveIsr,&p,&p.interrupt);
     if(e!=ESP_OK)return e;
@@ -131,11 +121,10 @@ void accept(Port &p,const event_t &e,uint64_t first,uint64_t last){
         p.rangeCount++;if(!(e.flags&EVENT_DISTANCE_VALID))p.failedCount++;
     }else if(e.type==EVENT_TEST){p.testCount++;}
     LogLine line={};
-    // cm -> mm is only a unit conversion. Sensor quantization remains 10 mm.
     int mm=(e.flags&EVENT_DISTANCE_VALID)?(int)e.range_cm*10:-1;
     snprintf(line.text,sizeof(line.text),
-        "UWB_EVENT,port=%c,node=%u,type=%s,boot=%08lx,seq=%lu,anchor=%u,anchor_hex=%04x,sid=%08lx,uci_seq=%lu,range_mm=%d,raw_cm=%u,status=0x%02x,nlos_raw=%u,profile=%u,callback_ms=%lu,tx_start_ms=%lu,queue_ms=%lu,rx_first_us=%llu,rx_last_us=%llu,rx_span_us=%llu,tx_drop=%lu,queue_depth=%u,state=%u,reason=0x%02x,fault=%u\n",
-        p.node==1?'A':'B',e.node,e.type==EVENT_RANGE?"RANGE":e.type==EVENT_TEST?"TEST":"HEALTH",
+        "UWB_EVENT,port=%c,node=%u,tag_id=%04x,type=%s,boot=%08lx,seq=%lu,anchor=%u,anchor_hex=%04x,sid=%08lx,uci_seq=%lu,range_mm=%d,raw_cm=%u,status=0x%02x,nlos_raw=%u,profile=%u,callback_ms=%lu,tx_start_ms=%lu,queue_ms=%lu,rx_first_us=%llu,rx_last_us=%llu,rx_span_us=%llu,tx_drop=%lu,queue_depth=%u,state=%u,reason=0x%02x,fault=%u\n",
+        p.node==1?'A':'B',e.node,p.node==1?0x0050:0x0051,e.type==EVENT_RANGE?"RANGE":e.type==EVENT_TEST?"TEST":"HEALTH",
         (unsigned long)e.boot,(unsigned long)e.sequence,e.anchor,e.anchor,(unsigned long)e.session_id,
         (unsigned long)e.uci_sequence,mm,e.range_cm,e.status,e.nlos,(e.flags&EVENT_PROFILE_CONFIRMED)?1:0,
         (unsigned long)e.callback_ms,(unsigned long)e.tx_start_ms,(unsigned long)(e.tx_start_ms-e.callback_ms),
@@ -201,7 +190,7 @@ void draw(){
     canvas.setCursor(193,45);canvas.printf("B: %s",state(ports[1],now));
     canvas.setTextColor(0x9db2cb);canvas.setCursor(10,63);canvas.print("ANCHOR   A: mm / nLos        B: mm / nLos");
     for(unsigned j=0;j<RANGE_ANCHOR_COUNT;j++){
-        int y=83+17*j;canvas.setTextColor(0x45d6d0);canvas.setCursor(10,y);
+        int y=79+15*j;canvas.setTextColor(0x45d6d0);canvas.setCursor(10,y);
         canvas.printf("%04x",range_anchor_ids[j]);
         for(unsigned i=0;i<2;i++){
             const auto &c=ports[i].ranges[j];canvas.setCursor(66+127*i,y);
@@ -211,18 +200,17 @@ void draw(){
             else canvas.print("--");
         }
     }
-    canvas.setTextColor(0x9db2cb);canvas.setCursor(10,204);
+    canvas.setTextColor(0x9db2cb);canvas.setCursor(10,202);
     canvas.printf("MISS A:%lu B:%lu  CRC A:%lu B:%lu",(unsigned long)ports[0].tracker.missing,
         (unsigned long)ports[1].tracker.missing,(unsigned long)ports[0].parser.crc_or_format_errors,
         (unsigned long)ports[1].parser.crc_or_format_errors);
-    canvas.setTextColor(0xffc66d);canvas.setCursor(10,220);
+    canvas.setTextColor(0xffc66d);canvas.setCursor(10,218);
     if(usbInit!=ESP_OK)canvas.printf("USB init: %s",esp_err_to_name(usbInit));
     else canvas.printf("USB TX %lu bytes / drop %lu",(unsigned long)cores3_usb_tx_bytes(),(unsigned long)getLogDrops());
     canvas.pushSprite(0,0);
 }
 }
 void setup(){
-    // Leave Arduino HWCDC uninitialized: our patched driver owns USB.
     auto cfg=M5.config();cfg.serial_baudrate=0;cfg.internal_imu=false;cfg.internal_rtc=false;
     cfg.internal_mic=false;cfg.internal_spk=false;cfg.external_imu=false;cfg.external_rtc=false;
     cfg.external_display_value=0;cfg.output_power=false;cfg.fallback_board=m5::board_t::board_M5StackCoreS3;

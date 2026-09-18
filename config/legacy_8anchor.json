@@ -1,0 +1,38 @@
+{
+  "name": "legacy_8anchor_v0.4.0",
+  "mode": "legacy_shared_controller",
+  "confirmed_against_anchor_1111": true,
+  "known_legacy_1111_sha256": "e53fa7e3f5de98e07bffdc1d3fa9f7fb7ca37df84bf6d8dcc2aa2a6a05900d04",
+  "radio": {
+    "session_id": 287454020,
+    "controller_address": 0,
+    "channel": 9,
+    "sfd": 2,
+    "preamble": 9,
+    "rframe": 3,
+    "slots": 25,
+    "slot_duration": 2400,
+    "interval_ms": 50,
+    "vendor_id": 1800,
+    "static_sts_iv": [1, 2, 3, 4, 5, 6]
+  },
+  "tags": {
+    "A": {"node_id": 1, "logical_address": 80, "startup_delay_ms": 0},
+    "B": {"node_id": 2, "logical_address": 81, "startup_delay_ms": 25}
+  },
+  "anchors": [
+    {"anchor_id": 4369, "anchor_address": 4369, "slot": 1, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 8738, "anchor_address": 8738, "slot": 2, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 13107, "anchor_address": 13107, "slot": 3, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 17476, "anchor_address": 17476, "slot": 4, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 21845, "anchor_address": 21845, "slot": 5, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 26214, "anchor_address": 26214, "slot": 6, "hardware": "Type2BP", "firmware": "existing-legacy"},
+    {"anchor_id": 30583, "anchor_address": 30583, "slot": 7, "hardware": "Type2BP", "firmware": "new-v0.4.0"},
+    {"anchor_id": 34952, "anchor_address": 34952, "slot": 8, "hardware": "Type2DK", "firmware": "new-v0.4.0"}
+  ],
+  "notes": [
+    "1111 legacy HEX inspected; 2222..6666 are assumed to be the same legacy family with address/slot changed.",
+    "A and B intentionally share the legacy UWB controller address/session; startup phase is staggered by 25 ms.",
+    "Hardware simultaneous A/B ranging is not yet verified."
+  ]
+}

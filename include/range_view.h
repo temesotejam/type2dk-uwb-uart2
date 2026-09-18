@@ -4,8 +4,8 @@
 #include <string.h>
 /* Latest result per fixed anchor. Failure/idle never resurrects an old distance. */
 typedef struct {event_t event;uint64_t rx_us;bool seen,active;} range_cell_t;
-#define RANGE_ANCHOR_COUNT 7
-static const uint16_t range_anchor_ids[RANGE_ANCHOR_COUNT]={0x1111,0x2222,0x3333,0x4444,0x5555,0x6666,0x7777};
+#define RANGE_ANCHOR_COUNT 8
+static const uint16_t range_anchor_ids[RANGE_ANCHOR_COUNT]={0x1111,0x2222,0x3333,0x4444,0x5555,0x6666,0x7777,0x8888};
 static inline void range_view_update(range_cell_t cells[RANGE_ANCHOR_COUNT],const event_t *e,uint64_t rx,bool reboot){
     if(reboot||e->type==EVENT_TEST)memset(cells,0,RANGE_ANCHOR_COUNT*sizeof(*cells));
     if(e->type==EVENT_HEALTH&&e->anchor==0){

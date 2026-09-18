@@ -18,27 +18,26 @@ idle ZLP, queue race recheck, overlap-safe partial-write stash, allocation check
 and a FIFO-written byte counter. Arduino HWCDC and the SDK USB driver are not installed.
 The corresponding license is `licenses/Apache-2.0.txt`, also bundled in firmware downloads.
 
-
-Type2BP support (0.2.0) targets the user's Rev.4.1 EVK and supplied
+Type2BP support targets the user's Rev.4.1 EVK and supplied
 `Type2BP_SDK_UWBIOT_SR150_v04.08.01_MCUx.zip`.
 `type2bp/build/prepare_sdk.py` applies the supplied `2bp_prebuild_v04.08.01.patch`
 to an external SDK and disables accelerometer initialization and SE051W use.
-The new anchor app uses the SR150 API's session handles, derives peer sessions
-from the shared JSON, and applies the vendor patch's per-board OTP TX/XTAL
-calibration values to runtime registers. It does not write OTP.
-SDK sources, firmware source arrays and vendor patches are not copied here.
-`type2bp/licenses/` contains the SR150 release's EULA and Software Content Register;
-common runtime/BSD/FreeRTOS notices remain bundled alongside them.
+The anchor app applies the vendor patch's per-board OTP TX/XTAL calibration values
+to runtime registers. It does not write OTP. SDK sources, firmware source arrays and
+vendor patches are not copied here.
 
-The SR150 stated ROM image area is 0x60000 bytes (no OTA use) to fit its embedded
-SR150 firmware; the actual flash image and ROM trailer are independently checked.
-All firmware is experimental until validated on the user's hardware.
+The user-supplied `anchor1_controlee(2).hex` is the 1111 fixed node and is
+byte-identical to the earlier inspected 1111 image (SHA-256
+`e53fa7e3f5de98e07bffdc1d3fa9f7fb7ca37df84bf6d8dcc2aa2a6a05900d04`).
+It identifies itself as an SR150 v04.06.05 ranging controlee. The image is not redistributed.
 
-0.3.0 keeps fixed-node labels 1111..7777 but replaces their radio profile after the
-user selected concurrent A/B operation. The user-supplied `anchor1_controlee.hex`
-was inspected locally (SHA-256 `e53fa7e3f5de98e07bffdc1d3fa9f7fb7ca37df84bf6d8dcc2aa2a6a05900d04`).
-Its application config uses one controller at 0x0000, session 0x11223344, anchor
-0x1111, multicast responder slot 1, Ch9/SP3/SFD2/preamble9, interval 50 ms.
-The inspected HEX is not republished. New fixed-node binaries are built from the
-same supplied SR150 SDK as 0.2.0, with original project application code.
-They are not binary patches or a claim of compatibility with unchanged old anchors.
+## 0.4.0 legacy compatibility
+
+v0.4.0 leaves 1111..6666 unchanged and builds only moving A/B plus new 7777
+(SR150 v04.08.01 SDK) and 8888 (SR040 v04.03.14 SDK).
+
+The legacy radio profile uses controller 0x0000, session 0x11223344, Ch9,
+SP3/SFD2/preamble9, 25 slots and 50 ms interval. New responders use slots 7 and 8.
+A/B logical IDs 0050/0051 are host/log identities, not legacy UWB MAC addresses.
+B startup is delayed 25 ms to reduce persistent collision risk. This simultaneous
+two-controller arrangement remains hardware-unverified.
