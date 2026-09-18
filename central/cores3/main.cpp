@@ -1,7 +1,7 @@
 #include <M5Unified.h>
 #include <driver/uart.h>
 #include <driver/gpio.h>
-#include <driver/usb_serial_jtag.h>
+#include "usb_log_driver.h"
 #include <esp_intr_alloc.h>
 #include <esp_timer.h>
 #include <hal/uart_ll.h>
@@ -46,11 +46,11 @@ void logger(void *){
     LogLine line;
     for(;;)if(xQueueReceive(logQueue,&line,portMAX_DELAY)==pdTRUE){
         size_t n=strlen(line.text);
-        // IDF 4.4.7 queues the whole record or returns 0 on timeout. Its ISR
-        // retains any bytes that did not fit in the hardware FIFO. No Arduino
+        // Our patched IDF driver queues the whole record or returns 0 on timeout.
+        // Its ISR preserves TX wakeups and partial FIFO writes. No Arduino
         // HWCDC calls (including if(Serial)/flush) may share this peripheral.
         // A closed/unplugged host can stall only this task, for at most 25 ms.
-        if(usb_serial_jtag_write_bytes(line.text,n,pdMS_TO_TICKS(25))!=(int)n)
+        if(cores3_usb_write_bytes(line.text,n,pdMS_TO_TICKS(25))!=(int)n)
             countLogDrop(logWriteDropped);
     }
 }
@@ -165,7 +165,7 @@ void statistics(){
         portEXIT_CRITICAL(&logMux);
         LogLine line={};
         snprintf(line.text,sizeof(line.text),
-          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,log_queue_drop=%lu,log_write_drop=%lu,log_format_drop=%lu,usb_init=%s,init=%s\n",
+          "DUAL_STAT,fw=%s,port=%c,rx_us=%llu,state=%s,bytes=%lu,ok=%lu,bad=%lu,missing=%lu,duplicate=%lu,backwards=%lu,restarts=%lu,wrong_node=%lu,range=%lu,range_fail=%lu,test=%lu,ring_drop=%lu,fifo_error=%lu,frame_error=%lu,parity=%lu,breaks=%lu,max_isr_batch=%lu,max_rx_span_us=%llu,log_drop=%lu,log_queue_drop=%lu,log_write_drop=%lu,log_format_drop=%lu,usb_tx_bytes=%lu,usb_init=%s,init=%s\n",
           FW_VERSION,p.node==1?'A':'B',(unsigned long long)esp_timer_get_time(),state(p,(uint64_t)esp_timer_get_time()),
           (unsigned long)bytes,(unsigned long)p.tracker.accepted,(unsigned long)p.parser.crc_or_format_errors,
           (unsigned long)p.tracker.missing,(unsigned long)p.tracker.duplicates,(unsigned long)p.tracker.backwards,
@@ -173,7 +173,8 @@ void statistics(){
           (unsigned long)p.failedCount,(unsigned long)p.testCount,(unsigned long)ring,(unsigned long)fifo,
           (unsigned long)framing,(unsigned long)parity,(unsigned long)brk,(unsigned long)batch,
           (unsigned long long)p.maxSpan,(unsigned long)logTotal,(unsigned long)logQueueLoss,
-          (unsigned long)logWriteLoss,(unsigned long)logFormatLoss,esp_err_to_name(usbInit),esp_err_to_name(p.init));
+          (unsigned long)logWriteLoss,(unsigned long)logFormatLoss,(unsigned long)cores3_usb_tx_bytes(),
+          esp_err_to_name(usbInit),esp_err_to_name(p.init));
         enqueue(line);
     }
 }
@@ -199,12 +200,12 @@ void draw(){
     }
     canvas.setTextColor(0xffc66d);canvas.setCursor(10,220);
     if(usbInit!=ESP_OK)canvas.printf("USB init: %s",esp_err_to_name(usbInit));
-    else canvas.printf("Timestamp: UART ISR / USB drop %lu",(unsigned long)getLogDrops());
+    else canvas.printf("USB TX %lu bytes / drop %lu",(unsigned long)cores3_usb_tx_bytes(),(unsigned long)getLogDrops());
     canvas.pushSprite(0,0);
 }
 }
 void setup(){
-    // Leave Arduino HWCDC uninitialized: the IDF driver exclusively owns USB.
+    // Leave Arduino HWCDC uninitialized: our patched driver owns USB.
     auto cfg=M5.config();cfg.serial_baudrate=0;cfg.internal_imu=false;cfg.internal_rtc=false;
     cfg.internal_mic=false;cfg.internal_spk=false;cfg.external_imu=false;cfg.external_rtc=false;
     cfg.external_display_value=0;cfg.output_power=false;cfg.fallback_board=m5::board_t::board_M5StackCoreS3;
@@ -212,7 +213,7 @@ void setup(){
     canvas.setColorDepth(16);
     if(!canvas.createSprite(320,240)){M5.Display.println("Display allocation failed");while(true)delay(1000);}
     usb_serial_jtag_driver_config_t usbCfg={};usbCfg.tx_buffer_size=4096;usbCfg.rx_buffer_size=256;
-    usbInit=usb_serial_jtag_driver_install(&usbCfg);
+    usbInit=cores3_usb_driver_install(&usbCfg);
     if(usbInit==ESP_OK)logQueue=xQueueCreate(48,sizeof(LogLine));
     if(logQueue && xTaskCreatePinnedToCore(logger,"UsbLogger",4096,nullptr,1,nullptr,0)!=pdPASS){
         vQueueDelete(logQueue);logQueue=nullptr;

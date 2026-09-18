@@ -75,11 +75,14 @@ UCI通知自体が来ない場合はRANGEを捏造しません。2秒周期のHE
 CRC16-CCITT-FALSE（poly=0x1021、init=0xffff、xorout=0）4桁16進数です。
 改行と `,log_crc=xxxx` 自身は計算に含めません。
 
-USBはESP-IDF 4.4.7のUSB Serial/JTAGドライバが単独で所有します。
+USBはESP-IDF 4.4.7を基にした専用ドライバが単独で所有します。
+0.1.2では公式5.5のTX再開処理を取り込み、起動時の送信開始も明示的に行います。
 Arduino HWCDCは起動せず、USB送信専用タスクが1行ずつドライバに渡します。
 ドライバ内のFIFOへの部分書き込みは未送信部分を保持して続行します。
 `usb_init=ESP_OK` はこのUSBドライバの初期化結果で、`init` は各UARTの初期化結果です。
 ドライバへの投入成功だけではPC側の保存完了までは保証しません。保存ファイルのCRC・連番も照合します。
+0.1.2の `usb_tx_bytes` と画面下部の `USB TX` はFIFOへ実際に書いたバイト数です。
+これもPC保存の完了通知ではありませんが、ドライバ内部で送信が止まっていないか確認できます。
 
 Tera Termの「ファイル→ログ」でBinaryを有効、TimestampとInclude screen bufferを無効にして保存し、
 `python scripts/check_log.py teraterm.log` で確認できます。0.1.0にはログCRCがなく、この検査は適用できません。

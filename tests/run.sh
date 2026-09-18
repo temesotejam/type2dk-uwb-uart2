@@ -8,6 +8,8 @@ ASAN_OPTIONS=detect_leaks=0 "$out/protocol"
 gcc -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Iinclude tests/test_log.c -o "$out/log"
 ASAN_OPTIONS=detect_leaks=0 "$out/log"
 python tests/test_log_check.py
+gcc -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined -g -Itests tests/test_usb_driver.c -o "$out/usb"
+ASAN_OPTIONS=detect_leaks=0 "$out/usb"
 python tests/test_profile.py
 for node in A B; do
   python scripts/generate_profile.py config/example_3bp.json --node "$node" --out "$out/tag_profile.h"

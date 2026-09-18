@@ -1,14 +1,15 @@
 # Hardware validation checklist
 
 0.1.0の実機ログではA/Bの同時UART受信を確認しました。一方、USBログには文字欠けと破棄がありました。
-0.1.1はUSB出力を変更した版で、修正後の実機確認は未完了です。
+0.1.1はUSB出力を変更しましたが「ログが出ない」と報告されました。
+0.1.2は送信開始・再開処理を修正した版で、修正後の実機確認は未完了です。
 
 1. Aのみ/Bのみ/両方同時のUART試験。A/Bに対応したBINを使用し、各5件/秒程度で増えること。
 2. 5分以上取得し `bad/missing/ring_drop/fifo_error/frame_error` の増分を確認。
 3. Aだけ再起動してAのrestartsが増え、Bのデータが途切れないこと。
 4. A/Bを入れ替えた際 `wrong_node` が増えること。勝手に位置A/Bを入れ替えないこと。
 5. USBを閉じても画面で受信が続き、再接続後 `log_drop` で行落ちを区別できること。
-   0.1.1は `usb_init=ESP_OK` を確認し、Tera TermのBinaryログを30秒以上保存します。
+   0.1.2は `usb_init=ESP_OK` と画面下部 `USB TX` の増加を確認し、Tera TermのBinaryログを30秒以上保存します。
    接続が安定した区間で `log_write_drop/log_queue_drop/log_format_drop` が増えず、
    `python scripts/check_log.py teraterm.log` がCRC不正・ログ連番欠落を検出しないことを確認します。
    取得開始・終了時やUSB抜き差し中の途中行は、その境界として別に扱います。
@@ -40,3 +41,16 @@ Arduino-ESP32 2.0.17のHWCDC ISRは `usb_serial_jtag_ll_write_txfifo` の戻り�
 
 - [Arduino HWCDC 2.0.17](https://github.com/espressif/arduino-esp32/blob/2.0.17/cores/esp32/HWCDC.cpp)
 - [ESP-IDF USB Serial/JTAG 4.4.7](https://github.com/espressif/esp-idf/blob/v4.4.7/components/driver/usb_serial_jtag.c)
+
+## 2026-09-18の送信停止修正
+
+0.1.1のUSBログ無出力の報告を受け、4.4.7の割り込み駆動を再調査しました。
+初期化時にTX EMPTY状態を消し、さらに空キュー時にも状態を消して割り込みを無効にするため、
+次のwriteで割り込みを有効にするだけでは送信を開始できない場合があります。
+公式5.5では初期状態の保持、idle時のゼロ長パケット送信、割り込み無効化とキュー投入の競合確認が入っています。
+0.1.2はこれを4.4.7用の専用ドライバに取り込み、初回送信の開始処理も追加しました。
+
+実際のCドライバを使うホストテストで、cold start、idle後の再開、64バイト整数倍の終端、
+FIFO部分書き込み、キュー競合、ホスト停止による全行拒否と復帰を検証します。
+旧4.4.7は同じFIFO/割り込みモデルで初回送信が停止し、初期化だけ直しても2回目で停止することを確認しました。
+これはレジスタ動作を模擬したテストであり、CoreS3実機の確認を代替するものではありません。
