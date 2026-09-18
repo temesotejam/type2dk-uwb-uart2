@@ -11,7 +11,8 @@ Do not upload the NXP SDK to this repository. Obtain it through the vendor distr
 [USB Serial/JTAG driver](https://github.com/espressif/esp-idf/blob/v4.4.7/components/driver/usb_serial_jtag.c),
 under Apache-2.0 (copyright Espressif Systems 2021-2023).
 The TX idle scheduling is adapted from the official
-[ESP-IDF 5.5 driver](https://github.com/espressif/esp-idf/blob/v5.5/components/esp_driver_usb_serial_jtag/src/usb_serial_jtag.c).
+[ESP-IDF 5.5 driver](https://github.com/espressif/esp-idf/blob/v5.5/components/esp_driver_usb_serial_jtag/src/usb_serial_jtag.c)
+(copyright Espressif Systems 2021-2025, Apache-2.0).
 Changes dated 2026-09-18: private function names, preserve/prime initial TX,
 idle ZLP, queue race recheck, overlap-safe partial-write stash, allocation checks,
 and a FIFO-written byte counter. Arduino HWCDC and the SDK USB driver are not installed.
