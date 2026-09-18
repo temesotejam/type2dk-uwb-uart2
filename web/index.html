@@ -39,10 +39,11 @@
   <div class="grid">
     <section class="card" aria-labelledby="check-heading">
       <h2 id="check-heading">書き込み後の確認</h2>
-      <p>画面上部に <strong>0.3.0-dual</strong> と表示されます。A/Bそれぞれの <strong>1111〜7777までの距離</strong> とnLosの生値を表示します。</p>
-      <p>下のセットから<strong>2DK-A/Bと固定側2BP</strong>も更新してください。まず7777の2BPを1台だけ動かして、A/B両方の距離を確認します。1111〜6666も追加時に更新が必要です。対象は両方とも<strong>基板Rev.4.1</strong>です。</p>
-      <p class="notice"><strong>実測距用の試験版です。</strong><br>ビルドと通信処理のテスト済みですが、A/Bと2BPの実機測距・7台同時動作はまだ未確認です。</p>
-      <a class="download" href="./firmware/type2dk-uwb-uart2-0.3.0-ranging.zip">2DK A/B・固定側1111〜7777の測距BINをダウンロード</a>
+      <p>画面上部に <strong>0.4.0-legacy8</strong> と表示されます。A/Bそれぞれの <strong>1111〜8888までの距離</strong> とnLosの生値を表示します。</p>
+      <p><strong>2DK-A/B、追加7777のType2BP、追加8888のType2DK</strong>を更新してください。既存1111〜6666は書き換えません。A/Bはログ上0050/0051ですが、旧固定局との互換性のためUWB上はcontroller 0x0000を共有します。対象は<strong>基板Rev.4.1</strong>です。</p>
+      <p class="notice"><strong>実測距用の試験版です。</strong><br>ビルドと通信処理のテスト済みですが、A/Bを同じlegacy identityで同時運用するRF挙動はまだ未確認です。</p>
+      <a class="download" href="./firmware/type2dk-uwb-uart2-0.4.0-cores3.zip">CoreS3 0.4.0のBIN・資料ZIPをダウンロード</a>
+      <p class="notice">UWB基板用v0.4.0 BINはこのページのZIPには含めません。NXP/Murata SDKから別途検証ビルドしたA/B・7777・8888用BINを使用してください。</p>
       <p class="meta">2DK・2BPはこれまでのDK6 Windows GUI「任意のBIN」で書き込みます。ZIP内のRANGING_SETUP.mdに機器別のファイル名を記載しています。</p>
     </section>
     <section class="card" aria-labelledby="wiring-heading">
